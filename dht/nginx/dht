@@ -1,0 +1,34 @@
+server {
+    listen 443 ssl;
+    server_name dht.nasiadka.pl;
+
+    location / {
+        proxy_pass http://localhost:3479;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Add CORS headers
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Origin, X-Requested-With, Content-Type, Accept, Authorization' always;
+        add_header 'Access-Control-Max-Age' '3600' always;
+        
+        # Handle preflight requests
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' '*';
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+            add_header 'Access-Control-Allow-Headers' 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+            add_header 'Access-Control-Max-Age' '3600';
+            add_header 'Content-Type' 'text/plain; charset=utf-8';
+            add_header 'Content-Length' '0';
+            return 204;
+        }
+    }
+
+    include /etc/nginx/includes/headers;
+    include /etc/nginx/includes/errors;
+    include /etc/nginx/includes/bots403;
+    include /etc/nginx/includes/geoblock;
+}
