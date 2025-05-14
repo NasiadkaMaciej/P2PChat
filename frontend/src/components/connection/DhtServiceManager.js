@@ -31,7 +31,7 @@ function DhtServiceManager() {
 		setShowForm,
 		editing,
 		handleFormSubmit,
-		startEdit: baseStartEdit,
+		startEdit,
 		cancelEdit,
 		loadServices: loadDhtServices
 	} = useServiceManagement({
@@ -42,15 +42,6 @@ function DhtServiceManager() {
 		serviceTypeLabel: 'DHT service',
 		initialFormState
 	});
-
-	// Custom startEdit to handle port extraction
-	const startEdit = (service) => {
-		setNewService({
-			name: service.name,
-			url: service.url
-		});
-		baseStartEdit(service);
-	};
 
 	const handleConnect = async (service) => {
 		if (!username) {

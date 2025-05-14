@@ -53,7 +53,8 @@ export function ConnectionProvider({ children }) {
 		dhtConnected,
 		setDhtConnected,
 		showIceServerManager,
-		setShowIceServerManager
+		setShowIceServerManager,
+		disconnect
 	};
 
 	return (
