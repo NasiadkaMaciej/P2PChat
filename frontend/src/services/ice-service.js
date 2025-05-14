@@ -4,7 +4,7 @@ const LOCAL_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localho
 
 // Fetch all available ICE servers
 export const fetchIceServers = async () => {
-	return fetchAll('/api/ice-servers/list');
+	return fetchAll('/api/ice-servers');
 };
 
 // Add a new ICE server
