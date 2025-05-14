@@ -55,8 +55,8 @@ export default function ServiceItem({
 
 			{showTypeLabel && service.type && (
 				<span className={`text-xs px-2 py-1 rounded ${service.type === 'stun'
-						? 'bg-blue-900/50 text-blue-200'
-						: 'bg-purple-900/50 text-purple-200'
+					? 'bg-blue-900/50 text-blue-200'
+					: 'bg-purple-900/50 text-purple-200'
 					}`}>
 					{service.type.toUpperCase()}
 				</span>
@@ -79,8 +79,8 @@ export default function ServiceItem({
 	return (
 		<motion.div
 			className={`p-3 rounded-md border ${selected || connected
-					? 'border-green-500 bg-gray-800/80'
-					: 'border-gray-700 bg-gray-800/50'
+				? 'border-green-500 bg-gray-800/80'
+				: 'border-gray-700 bg-gray-800/50'
 				}`}
 			{...fadeIn}
 		>

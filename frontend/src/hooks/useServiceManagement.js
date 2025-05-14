@@ -36,8 +36,12 @@ export function useServiceManagement({
 	const handleFormSubmit = async (e) => {
 		e.preventDefault();
 
-		if (!formData.name || !formData.url) {
-			setError('Name and URL are required');
+		const requiredFields = Object.entries(formData)
+			.filter(([key, _]) => initialFormState.hasOwnProperty(key))
+			.filter(([_, value]) => !value);
+
+		if (requiredFields.length > 0) {
+			setError(`${requiredFields.map(([key]) => key).join(', ')} are required`);
 			return;
 		}
 
@@ -55,6 +59,18 @@ export function useServiceManagement({
 		}
 	};
 
+	const startEdit = (service) => {
+		setFormData({ ...initialFormState, ...service });
+		setEditing(service._id);
+		setShowForm(true);
+	};
+
+	const cancelEdit = () => {
+		setEditing(null);
+		setFormData({ ...initialFormState });
+		setShowForm(false);
+	};
+
 	return {
 		services,
 		formData,
@@ -64,16 +80,8 @@ export function useServiceManagement({
 		setShowForm,
 		editing,
 		handleFormSubmit,
-		startEdit: (service) => {
-			setFormData({ ...initialFormState, ...service });
-			setEditing(service._id);
-			setShowForm(true);
-		},
-		cancelEdit: () => {
-			setEditing(null);
-			setFormData({ ...initialFormState });
-			setShowForm(false);
-		},
+		startEdit,
+		cancelEdit,
 		loadServices
 	};
 }

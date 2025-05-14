@@ -10,37 +10,101 @@ let iceCandidateBuffer = [];
 let signalCheckInterval = null;
 
 /**
+ * Common setup for peer connections
+ */
+async function setupPeerConnection(isInitiator = false) {
+	// Clear ICE candidate buffer on new connections
+	iceCandidateBuffer = [];
+
+	// Create and initialize peer connection
+	const pc = await createPeerConnection();
+	if (!pc) throw new Error("Failed to create peer connection");
+
+	// Set up data channel if initiator
+	if (isInitiator) {
+		const dc = pc.createDataChannel('chat');
+		setupDataChannel(dc);
+	}
+
+	return pc;
+}
+
+/**
+ * Common function for handling SDP (offer/answer)
+ */
+async function handleSessionDescription(sdpPayload, isOffer = false) {
+	try {
+		console.log(`Processing ${isOffer ? 'offer' : 'answer'}:`, sdpPayload);
+
+		// Use a single parsing approach
+		const sessionDesc = typeof sdpPayload === 'string'
+			? JSON.parse(sdpPayload)
+			: sdpPayload;
+
+		if (!sessionDesc?.type || !sessionDesc?.sdp) {
+			throw new Error(`Invalid ${isOffer ? 'offer' : 'answer'} format - missing type or sdp`);
+		}
+
+		const pc = getPeerConnection();
+		if (!pc) throw new Error("No active peer connection");
+
+		await pc.setRemoteDescription(new RTCSessionDescription(sessionDesc));
+		console.log("Remote description set successfully");
+
+		// Process any buffered ICE candidates
+		await processBufferedIceCandidates();
+
+		return true;
+	} catch (error) {
+		console.error(`Error handling ${isOffer ? 'offer' : 'answer'}:`, error);
+		throw error;
+	}
+}
+
+/**
+ * Process signal through DHT
+ */
+async function sendSignalViaDht(signal, targetPeerId) {
+	if (!dhtService?.url || !dhtPeerId) {
+		throw new Error("Not connected to a DHT service");
+	}
+
+	await fetch(`${dhtService.url}/signal`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			from: dhtPeerId,
+			to: targetPeerId,
+			type: signal.type,
+			payload: JSON.stringify(signal.payload)
+		})
+	});
+}
+
+/**
  * Connect via DHT
  */
 export async function connectViaDht(selectedDht) {
-	if (!selectedDht || !selectedDht.url) {
-		throw new Error("No DHT service selected");
-	}
+	if (!selectedDht?.url) throw new Error("No DHT service selected");
 
-	iceCandidateBuffer = [];
 	dhtService = selectedDht;
 	console.log("Connecting to DHT:", selectedDht.url);
 
 	try {
 		// Register our peer with the DHT
-		console.log("Registering with DHT...");
 		const registration = await registerWithDht(selectedDht.url);
-		console.log("DHT registration response:", registration);
 		dhtPeerId = registration.peerId;
 
 		// Find peers through the DHT
 		const peers = await findPeersFromDht(selectedDht.url);
-
-		// Filter out our own peer ID
 		const otherPeers = peers.filter(p => p.peerId !== dhtPeerId);
 
-		// Start polling for signals (for incoming connection requests)
+		// Start polling for signals
 		startSignalPolling(selectedDht.url, dhtPeerId);
 
 		// Set up event listener for ICE candidates
 		window.addEventListener('ice-candidate', handleIceCandidateEvent);
 
-		// Return peer information
 		return {
 			status: 'connected_to_dht',
 			peerId: dhtPeerId,
@@ -58,7 +122,7 @@ export async function connectViaDht(selectedDht) {
 function handleIceCandidateEvent(event) {
 	const { candidate, peerId } = event.detail;
 	if (candidate && peerId && dhtService) {
-		sendIceCandidateViaDht(candidate, peerId);
+		sendSignalViaDht({ type: 'ice-candidate', payload: candidate }, peerId);
 	}
 }
 
@@ -66,15 +130,12 @@ function handleIceCandidateEvent(event) {
  * Helper function to start signal polling
  */
 function startSignalPolling(dhtUrl, peerId) {
-	// Clear any existing interval
-	if (signalCheckInterval) {
-		clearInterval(signalCheckInterval);
-	}
+	if (signalCheckInterval) clearInterval(signalCheckInterval);
 
 	signalCheckInterval = setInterval(async () => {
 		try {
 			const signals = await checkForSignals(dhtUrl, peerId);
-			if (signals && signals.length > 0) {
+			if (signals?.length > 0) {
 				console.log("Received signals:", signals);
 				handleIncomingSignals(signals, dhtUrl, peerId);
 			}
@@ -82,19 +143,13 @@ function startSignalPolling(dhtUrl, peerId) {
 			console.error("Error checking for signals:", error);
 		}
 	}, 2000);
-
-	return signalCheckInterval;
 }
 
 /**
  * Connect to a specific peer via DHT
  */
 export async function connectToPeerViaDht(peerId, dhtUrl) {
-	if (!dhtService || !dhtPeerId) {
-		throw new Error("Not connected to a DHT service");
-	}
-
-	iceCandidateBuffer = [];
+	if (!dhtService || !dhtPeerId) throw new Error("Not connected to a DHT service");
 
 	// Store the remote peer ID
 	window._currentRemotePeer = peerId;
@@ -103,31 +158,15 @@ export async function connectToPeerViaDht(peerId, dhtUrl) {
 		console.log(`Creating connection to peer: ${peerId}`);
 
 		// Create peer connection
-		const pc = await createPeerConnection();
-		if (!pc) throw new Error("Failed to create connection");
-
-		// Create data channel
-		const dc = pc.createDataChannel('chat');
-		setupDataChannel(dc);
+		const pc = await setupPeerConnection(true);
 
 		// Create offer
 		const offer = await pc.createOffer();
 		await pc.setLocalDescription(offer);
 		const completeOffer = await waitForIceGatheringComplete(pc);
 
-		console.log(`Sending offer to peer: ${peerId}`);
-
-		// Send offer through DHT signaling
-		await fetch(`${dhtUrl}/signal`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				from: dhtPeerId,
-				to: peerId,
-				type: 'offer',
-				payload: JSON.stringify(completeOffer)
-			})
-		});
+		// Send offer through DHT
+		await sendSignalViaDht({ type: 'offer', payload: completeOffer }, peerId);
 
 		return { status: 'connecting', targetPeerId: peerId };
 	} catch (error) {
@@ -142,53 +181,41 @@ export async function connectToPeerViaDht(peerId, dhtUrl) {
 export async function acceptIncomingConnection(offerPayload, dhtUrl, fromPeerId) {
 	console.log('Accepting connection from:', fromPeerId);
 
-	// Clear ICE candidate buffer on new connections
-	iceCandidateBuffer = [];
-
 	try {
 		// Create and initialize peer connection
-		const pc = await createPeerConnection();
-		if (!pc) throw new Error("Failed to create peer connection");
+		const pc = await setupPeerConnection();
 
-		// Store the remote peer ID for later use
+		// Store the remote peer ID
 		window._currentRemotePeer = fromPeerId;
 
-		// Set remote description from the offer
-		let offerSdp;
+		// Parse offer if needed
+		let offerSdp = offerPayload;
 		try {
-			// Try to parse if it's a JSON string
-			offerSdp = typeof offerPayload === 'string' ?
-				JSON.parse(offerPayload) : offerPayload;
+			if (typeof offerPayload === 'string') {
+				offerSdp = JSON.parse(offerPayload);
+			}
 		} catch (e) {
 			console.error("Error parsing offer payload:", e);
 			throw new Error("Invalid offer format");
 		}
 
+		// Set remote description
 		console.log('Setting remote description from offer');
 		await pc.setRemoteDescription(new RTCSessionDescription(offerSdp));
 
-		// Create and set local description (answer)
+		// Create answer
 		const answer = await pc.createAnswer();
 		await pc.setLocalDescription(answer);
 
 		// Wait for ICE gathering to complete
 		const completeAnswer = await waitForIceGatheringComplete(pc);
 
-		// Send answer back through DHT
-		const response = await fetch(`${dhtUrl}/signal`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				from: dhtPeerId,
-				to: fromPeerId,
-				type: 'answer',
-				payload: JSON.stringify(completeAnswer)
-			})
-		});
+		// Send answer via DHT
+		await sendSignalViaDht({ type: 'answer', payload: completeAnswer }, fromPeerId);
 
 		console.log('Answer sent successfully');
 
-		// Now that the connection is established, process any buffered ICE candidates
+		// Process buffered ICE candidates
 		await processBufferedIceCandidates();
 
 		return { status: 'connecting', targetPeerId: fromPeerId };
@@ -204,24 +231,23 @@ export async function acceptIncomingConnection(offerPayload, dhtUrl, fromPeerId)
 async function handleIncomingSignals(signals, dhtUrl, peerId) {
 	if (!signals || signals.length === 0) return;
 
-	// Group signals by type for simpler processing
+	// Group signals by type
 	const signalsByType = signals.reduce((acc, signal) => {
 		if (!acc[signal.type]) acc[signal.type] = [];
 		acc[signal.type].push(signal);
 		return acc;
 	}, {});
 
-	// Buffer ICE candidates for later processing
+	// Buffer ICE candidates
 	if (signalsByType['ice-candidate']) {
 		iceCandidateBuffer.push(...signalsByType['ice-candidate']);
 		console.log(`Buffered ${signalsByType['ice-candidate'].length} ICE candidates`);
 	}
 
-	// Process offer/answer signals first
 	const pc = getPeerConnection();
 
-	// Handle offer - highest priority
-	if (signalsByType.offer && signalsByType.offer[0]) {
+	// Handle offer
+	if (signalsByType.offer?.[0]) {
 		const offerSignal = signalsByType.offer[0];
 		window._currentRemotePeer = offerSignal.from;
 		window.dispatchEvent(new CustomEvent('peer-connection-request', {
@@ -234,12 +260,10 @@ async function handleIncomingSignals(signals, dhtUrl, peerId) {
 	}
 
 	// Handle answer
-	if (signalsByType.answer && signalsByType.answer[0] && pc) {
+	if (signalsByType.answer?.[0] && pc) {
 		try {
 			const answerSignal = signalsByType.answer[0];
-			const answerSdp = JSON.parse(answerSignal.payload);
-			await pc.setRemoteDescription(new RTCSessionDescription(answerSdp));
-			await processBufferedIceCandidates();
+			await handleSessionDescription(answerSignal.payload, false);
 			window.dispatchEvent(new CustomEvent('peer-connection-established', {
 				detail: { peerId: answerSignal.from }
 			}));
@@ -248,8 +272,8 @@ async function handleIncomingSignals(signals, dhtUrl, peerId) {
 		}
 	}
 
-	// Process ICE candidates if we're ready
-	if (pc && pc.remoteDescription) {
+	// Process ICE candidates if ready
+	if (pc?.remoteDescription) {
 		await processBufferedIceCandidates();
 	}
 }
@@ -276,62 +300,13 @@ async function processBufferedIceCandidates() {
 	}
 
 	iceCandidateBuffer = remainingCandidates;
-
-	if (iceCandidateBuffer.length > 0) {
-		console.warn(`${iceCandidateBuffer.length} ICE candidates failed to add. Will retry later.`);
-	}
-}
-
-/**
- * Send ICE candidate through DHT
- */
-async function sendIceCandidateViaDht(candidate, remotePeerId) {
-	try {
-		if (!dhtService || !dhtService.url) return;
-
-		await fetch(`${dhtService.url}/signal`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				from: dhtPeerId,
-				to: remotePeerId,
-				type: 'ice-candidate',
-				payload: JSON.stringify(candidate)
-			})
-		});
-		console.log('ICE candidate sent via DHT');
-	} catch (error) {
-		console.error('Error sending ICE candidate:', error);
-	}
 }
 
 /**
  * Handle incoming answer
  */
 export async function handleAnswer(answerPayload) {
-	try {
-		console.log("Processing answer:", answerPayload);
-
-		// Use a single parsing approach
-		const answer = typeof answerPayload === 'string'
-			? JSON.parse(answerPayload)
-			: answerPayload;
-
-		if (!answer?.type || !answer?.sdp) {
-			throw new Error("Invalid answer format - missing type or sdp");
-		}
-
-		const pc = getPeerConnection();
-		if (!pc) throw new Error("No active peer connection");
-
-		await pc.setRemoteDescription(new RTCSessionDescription(answer));
-		console.log("Remote description set successfully");
-
-		return true;
-	} catch (error) {
-		console.error("Error accepting answer:", error);
-		throw error;
-	}
+	return handleSessionDescription(answerPayload, false);
 }
 
 /**
