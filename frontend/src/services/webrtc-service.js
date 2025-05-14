@@ -80,19 +80,6 @@ export async function createAnswer(offerString) {
 }
 
 /**
- * Handle offer and create answer
- */
-export const handleOfferAndCreateAnswer = async (offerString) => {
-	try {
-		console.log("Processing offer to create answer");
-		return await createAnswer(offerString);
-	} catch (error) {
-		console.error('Error handling offer:', error);
-		throw error;
-	}
-};
-
-/**
  * Wait for ICE gathering to complete
  */
 export function waitForIceGatheringComplete(pc) {

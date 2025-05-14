@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useConnection } from '../../context/ConnectionContext';
 import {
 	createOffer,
-	handleOfferAndCreateAnswer,
+	createAnswer
 } from '../../services/webrtc-service';
 import { handleAnswer } from '@/services/signaling-service';
 import CopyableText from '../ui/CopyableText';
@@ -61,7 +61,7 @@ function OfferAnswerExchange() {
 		resetStates();
 
 		try {
-			const answer = await handleOfferAndCreateAnswer(receivedOffer);
+			const answer = await createAnswer(receivedOffer);
 			setAnswerToShare(answer);
 		} catch (err) {
 			console.error(err);

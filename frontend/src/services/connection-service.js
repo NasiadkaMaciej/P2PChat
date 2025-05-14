@@ -20,11 +20,18 @@ export function createPeerConnection() {
 			// Extract the iceServers array from the config object
 			const { iceServers } = config;
 
+			// Fallback to empty array if no servers were returned
+			const servers = iceServers || [];
+
+			if (servers.length === 0) {
+				console.warn('No ICE servers configured! Connections may fail.');
+			}
+
 			// Close any existing connections
 			if (peerConnection) closeConnection();
 
 			// Create RTCPeerConnection with the iceServers array
-			peerConnection = new RTCPeerConnection({ iceServers });
+			peerConnection = new RTCPeerConnection({ iceServers: servers });
 
 			// Set up connection state change handler
 			peerConnection.onconnectionstatechange = () => {
@@ -38,14 +45,12 @@ export function createPeerConnection() {
 					console.log('New ICE candidate:', event.candidate);
 					// The actual sending of ICE candidates happens in signaling-service
 					// via the window event system
-					if (typeof window !== 'undefined') {
-						window.dispatchEvent(new CustomEvent('ice-candidate', {
-							detail: {
-								candidate: event.candidate,
-								peerId: findRemotePeerId()
-							}
-						}));
-					}
+					window.dispatchEvent(new CustomEvent('ice-candidate', {
+						detail: {
+							candidate: event.candidate,
+							peerId: findRemotePeerId()
+						}
+					}));
 				}
 			};
 
@@ -54,9 +59,6 @@ export function createPeerConnection() {
 				console.log('Received data channel');
 				setupDataChannel(event.channel);
 			};
-
-			// Make peerConnection globally available for debugging and service coordination
-			if (typeof window !== 'undefined') window._peerConnection = peerConnection;
 
 			return peerConnection;
 		})
@@ -70,7 +72,7 @@ export function createPeerConnection() {
  * Helper function to find the remote peer ID based on connection state
  */
 function findRemotePeerId() {
-	if (typeof window !== 'undefined' && window._currentRemotePeer)
+	if (window._currentRemotePeer)
 		return window._currentRemotePeer;
 	return null;
 }

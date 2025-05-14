@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { fadeIn, interactive } from '../../utils/animation-utils';
 
 function CopyableText({ value, label, buttonText = 'Copy', highlightColor = 'blue' }) {

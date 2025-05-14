@@ -11,37 +11,26 @@ const ConnectionContext = createContext(null);
 export function ConnectionProvider({ children }) {
 	const [connectionState, setConnectionState] = useState('disconnected');
 	const [showChat, setShowChat] = useState(false);
-	const [hasConnectedOnce, setHasConnectedOnce] = useState(false);
 	const [error, setError] = useState('');
 	const [connectionMethod, setConnectionMethod] = useState('offer-answer');
 	const [selectedDht, setSelectedDht] = useState(null);
 	const [dhtConnected, setDhtConnected] = useState(false);
-
+	const [showIceServerManager, setShowIceServerManager] = useState(false);
 
 	// Initialize app and subscribe to connection state
 	useEffect(() => {
-		if (typeof window !== 'undefined') {
-			initializeUsername();
-			const unsubscribe = subscribeToConnectionState(setConnectionState);
-			return () => {
-				unsubscribe();
-				closeConnection();
-			};
-		}
+		initializeUsername();
+		const unsubscribe = subscribeToConnectionState(setConnectionState);
+		return () => {
+			unsubscribe();
+			closeConnection();
+		};
 	}, []);
 
-	// Handle first connection and show chat
-	useEffect(() => {
-		if (connectionState === 'connected' && !hasConnectedOnce) {
-			setHasConnectedOnce(true);
-			setShowChat(true);
-		}
-	}, [connectionState, hasConnectedOnce]);
-
-	// Reset error on connection state change
 	useEffect(() => {
 		if (connectionState === 'connected') {
 			setError('');
+			setShowChat(true);
 		}
 	}, [connectionState]);
 
@@ -55,16 +44,16 @@ export function ConnectionProvider({ children }) {
 		connectionState,
 		showChat,
 		setShowChat,
-		hasConnectedOnce,
 		error,
 		setError,
-		disconnect,
 		connectionMethod,
 		setConnectionMethod,
 		selectedDht,
 		setSelectedDht,
 		dhtConnected,
-		setDhtConnected
+		setDhtConnected,
+		showIceServerManager,
+		setShowIceServerManager
 	};
 
 	return (

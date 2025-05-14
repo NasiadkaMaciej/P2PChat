@@ -1,35 +1,48 @@
-/**
- * Service to provide ICE (STUN/TURN) server configuration
- */
+// Service to provide ICE (STUN/TURN) server configuration
+const IceServer = require('../models/ice-server-model');
 
-const getIceServers = () => {
-	// Read from environment variables
-	const stunServers = process.env.STUN_SERVERS?.split(',') || [];
-	const turnServerUrl = process.env.TURN_SERVER_URL;
-	const turnServerUsername = process.env.TURN_SERVER_USERNAME;
-	const turnServerCredential = process.env.TURN_SERVER_CREDENTIAL;
+const getIceServers = async () => {
+	try {
+		// Get only selected servers from database
+		const dbServers = await IceServer.find({ selected: true });
 
-	const iceServers = [];
+		// If no servers are selected, find defaults or any server of each type
+		if (dbServers.length === 0) {
+			// Try to find default servers first
+			const defaultServers = await IceServer.find({ isDefault: true });
+			if (defaultServers.length > 0) {
+				dbServers.push(...defaultServers);
+			} else {
+				// If no defaults, select one of each type
+				const stunServer = await IceServer.findOne({ type: 'stun' });
+				const turnServer = await IceServer.findOne({ type: 'turn' });
 
-	// Add STUN servers
-	if (stunServers.length > 0) {
-		iceServers.push({
-			urls: stunServers,
-			credentialType: 'password'
+				if (stunServer) dbServers.push(stunServer);
+				if (turnServer) dbServers.push(turnServer);
+			}
+		}
+
+		// Transform to the expected format for WebRTC
+		const iceServers = dbServers.map(server => {
+			const iceServer = {
+				urls: server.url,
+				credentialType: 'password'
+			};
+
+			if (server.type === 'turn') {
+				iceServer.username = server.username;
+				iceServer.credential = server.credential;
+			}
+
+			return iceServer;
 		});
-	}
 
-	// Add TURN server if all required params exist
-	if (turnServerUrl && turnServerUsername && turnServerCredential) {
-		iceServers.push({
-			urls: turnServerUrl,
-			username: turnServerUsername,
-			credential: turnServerCredential,
-			credentialType: 'password'
-		});
+		return { iceServers };
+	} catch (error) {
+		console.error('Error fetching ICE servers:', error);
+		// Return empty array as fallback
+		return { iceServers: [] };
 	}
-
-	return { iceServers };
 };
 
 module.exports = { getIceServers };

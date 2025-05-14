@@ -1,174 +1,194 @@
+'use client';
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { findPeersFromDht } from '@/services/dht-service';
+import { connectToPeerViaDht } from '@/services/signaling-service';
+import { fadeIn } from '@/utils/animation-utils';
 import Button from '../ui/Button';
-import { connectToPeerViaDht, acceptIncomingConnection } from '../../services/signaling-service';
-import { findPeersFromDht } from '../../services/dht-service';
-import { fadeIn, slideIn } from '../../utils/animation-utils';
-import { useConnection } from '../../context/ConnectionContext';
+import { useConnection } from '@/context/ConnectionContext';
+import { connectViaDht, acceptIncomingConnection } from '@/services/signaling-service';
+import { getOwnPeerId } from '@/services/signaling-service';
 
 function PeerList({ dhtService }) {
+	const { setError, connection } = useConnection();
 	const [peers, setPeers] = useState([]);
 	const [loading, setLoading] = useState(false);
-	const [refreshTimer, setRefreshTimer] = useState(null);
 	const [connecting, setConnecting] = useState(false);
-	const [targetPeer, setTargetPeer] = useState(null);
-	const [incomingRequest, setIncomingRequest] = useState(null);
-	const { setError, setShowChat } = useConnection();
+	const [selectedPeerId, setSelectedPeerId] = useState(null);
+	const [connectionRequests, setConnectionRequests] = useState([]);
 
-	// Load peers and set up refresh timer
+	// Get access to the current user's peerId from the ConnectionContext
+	useEffect(() => {
+		if (!connection) return;
+
+		// Log the current connection state to help debug
+		console.log('Current connection state:', connection);
+	}, [connection]);
+
+	// Log whenever peers list changes
+	useEffect(() => {
+		console.log('Peers list updated:', peers);
+	}, [peers]);
+
+	// Add useEffect to listen for connection requests
+	useEffect(() => {
+		const handleConnectionRequest = (event) => {
+			const { from, payload } = event.detail;
+			setConnectionRequests(prev => {
+				if (prev.some(req => req.from === from)) {
+					return prev;
+				}
+				return [...prev, { from, payload, timestamp: new Date() }];
+			});
+		};
+
+		window.addEventListener('peer-connection-request', handleConnectionRequest);
+		return () => {
+			window.removeEventListener('peer-connection-request', handleConnectionRequest);
+		};
+	}, []);
+
+	// Load peers when component mounts or dhtService changes
 	useEffect(() => {
 		if (dhtService) {
 			loadPeers();
-			const timer = setInterval(loadPeers, 5000);
-			setRefreshTimer(timer);
+			const interval = setInterval(loadPeers, 5000);
+			return () => clearInterval(interval);
 		}
+	}, [dhtService, connection]); // Added connection as dependency
 
-		return () => {
-			if (refreshTimer) {
-				clearInterval(refreshTimer);
-			}
-		};
-	}, [dhtService]);
-
-	// Listen for incoming connection requests
-	useEffect(() => {
-		if (typeof window !== 'undefined') {
-			const handleConnectionRequest = (event) => {
-				console.log("Connection request received:", event.detail);
-				setIncomingRequest(event.detail);
-			};
-
-			const handleConnectionEstablished = () => {
-				console.log("Connection established event received");
-				setConnecting(false);
-				setIncomingRequest(null);
-				// Show chat when connection is established
-				setShowChat(true);
-			};
-
-			window.addEventListener('peer-connection-request', handleConnectionRequest);
-			window.addEventListener('peer-connection-established', handleConnectionEstablished);
-
-			return () => {
-				window.removeEventListener('peer-connection-request', handleConnectionRequest);
-				window.removeEventListener('peer-connection-established', handleConnectionEstablished);
-			};
-		}
-	}, [setShowChat]);
-
+	// Function to load peers from DHT with improved filtering
 	const loadPeers = async () => {
-		if (!dhtService) return;
+		if (!dhtService?.url) {
+			console.log('Cannot load peers - dhtService or URL is missing');
+			return;
+		}
 
 		try {
 			setLoading(true);
 			const peerList = await findPeersFromDht(dhtService.url);
-			// Filter out our own peer ID which is stored in window._ownPeerId during DHT connection
-			const otherPeers = peerList.filter(p => p.peerId !== window._ownPeerId);
-			setPeers(otherPeers);
+
+			// Get our own peer ID directly from the connection object
+			const myPeerId = getOwnPeerId();
+			console.log('My peer ID for filtering:', myPeerId);
+
+			// Filter out our own peer ID if available
+			const filteredPeers = myPeerId
+				? peerList.filter(p => p.peerId !== myPeerId)
+				: peerList;
+
+			console.log(`Loaded ${filteredPeers.length} peers (from total ${peerList.length})`);
+			setPeers(filteredPeers);
 		} catch (error) {
-			setError(`Failed to load peers: ${error.message}`);
+			console.error('Error loading peers:', error);
+			setError?.(`Failed to load peers: ${error.message}`);
 		} finally {
 			setLoading(false);
 		}
 	};
 
-	const handleConnectToPeer = async (peer) => {
-		setConnecting(true);
-		setTargetPeer(peer);
-
-		try {
-			await connectToPeerViaDht(peer.peerId, dhtService.url);
-		} catch (error) {
-			setError(`Failed to connect: ${error.message}`);
-			setConnecting(false);
-			setTargetPeer(null);
-		}
-	};
-
-	const handleAcceptConnection = async () => {
-		if (!incomingRequest) return;
+	// Connect to a specific peer
+	const handleConnectToPeer = async (peerId) => {
+		if (!dhtService || !dhtService.url) return;
 
 		try {
 			setConnecting(true);
-			await acceptIncomingConnection(incomingRequest.payload, dhtService.url, incomingRequest.from);
-			// The connection established event will reset connecting state
+			setSelectedPeerId(peerId);
+			await connectToPeerViaDht(peerId, dhtService.url);
 		} catch (error) {
-			setError(`Failed to accept connection: ${error.message}`);
+			setError(`Failed to connect to peer: ${error.message}`);
+		} finally {
 			setConnecting(false);
 		}
-	};
-
-	const handleRejectConnection = () => {
-		setIncomingRequest(null);
 	};
 
 	if (!dhtService) return null;
 
 	return (
 		<motion.div
-			className="mt-4 p-4 bg-gray-800 rounded-lg border border-gray-700"
+			className="mt-2 p-3 border border-gray-700 rounded-md bg-gray-800/50"
 			{...fadeIn}
 		>
-			<div className="flex justify-between items-center mb-4">
-				<h3 className="text-xl font-medium text-white">Available Users</h3>
-			</div>
 
-			{/* Incoming Connection Request */}
-			<AnimatePresence>
-				{incomingRequest && (
-					<motion.div
-						className="mb-4 p-3 bg-blue-900/30 border border-blue-700 rounded-md"
-						{...slideIn('down')}
-					>
-						<p className="mb-2">
-							<span className="font-medium">Connection request</span> from{' '}
-							{peers.find(p => p.peerId === incomingRequest.from)?.name || 'Unknown user'}
-						</p>
-						<div className="flex space-x-3">
-							<Button
-								onClick={handleAcceptConnection}
-								variant="success"
-								disabled={connecting}
-							>
-								{connecting ? 'Accepting...' : 'Accept'}
-							</Button>
-							<Button onClick={handleRejectConnection} variant="danger">
-								Reject
-							</Button>
-						</div>
-					</motion.div>
-				)}
-			</AnimatePresence>
-
-			{loading && peers.length === 0 ? (
-				<div className="text-center py-4">
-					<div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500"></div>
-				</div>
-			) : peers.length === 0 ? (
-				<motion.div className="p-3 bg-gray-700/50 rounded text-center" {...fadeIn}>
-					No other users connected. Waiting for users to join...
-				</motion.div>
-			) : (
-				<div className="space-y-3">
-					{peers.map(peer => (
-						<motion.div
-							key={peer.peerId}
-							className="p-3 rounded-md border border-gray-700 bg-gray-800/50"
-							{...fadeIn}
-						>
-							<div className="flex justify-between items-center">
-								<div>
-									<h4 className="font-medium text-white">{peer.name || 'Anonymous'}</h4>
-								</div>
+			{connectionRequests.length > 0 && (
+				<div className="mb-3 p-2 bg-yellow-900/30 border border-yellow-700/50 rounded-md">
+					<h5 className="text-sm font-medium text-yellow-300 mb-1">Incoming Connection Requests</h5>
+					{connectionRequests.map((request) => (
+						<div key={request.from} className="flex justify-between items-center py-1">
+							<span className="text-sm text-white">{request.from.split('-').slice(-1)[0]}</span>
+							<div className="flex gap-2">
 								<Button
-									onClick={() => handleConnectToPeer(peer)}
-									disabled={connecting || incomingRequest !== null}
+									onClick={() => {
+										connectViaDht(dhtService).then(() => {
+											acceptIncomingConnection(request.payload, dhtService.url, request.from);
+											setConnectionRequests(prev => prev.filter(req => req.from !== request.from));
+										});
+									}}
+									variant="primary"
+									size="xs"
 								>
-									{connecting && targetPeer?.peerId === peer.peerId ? 'Connecting...' : 'Connect'}
+									Accept
+								</Button>
+								<Button
+									onClick={() => {
+										setConnectionRequests(prev => prev.filter(req => req.from !== request.from));
+									}}
+									variant="danger"
+									size="xs"
+								>
+									Reject
 								</Button>
 							</div>
-						</motion.div>
+						</div>
 					))}
+				</div>
+			)}
+			<h4 className="text-sm font-medium text-white mb-2">Available Peers</h4>
+
+			{loading && peers.length === 0 ? (
+				<div className="text-center py-2">
+					<div className="inline-block animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500"></div>
+				</div>
+			) : (
+				<div>
+					{peers.length === 0 ? (
+						<p className="text-xs text-gray-400">No other peers connected. Waiting for someone to join...</p>
+					) : (
+						<div className="space-y-2">
+							{peers.map((peer) => (
+								<div
+									key={peer.peerId}
+									className="flex items-center justify-between py-1 px-2 bg-gray-700/50 rounded-md"
+								>
+									<div>
+										<span className="text-sm text-white">{peer.name || 'Unknown User'}</span>
+										<span className="text-xs text-gray-400 ml-2">(ID: {peer.peerId.substring(0, 8)}...)</span>
+									</div>
+									<Button
+										onClick={() => handleConnectToPeer(peer.peerId)}
+										variant="primary"
+										size="xs"
+										disabled={connecting && selectedPeerId === peer.peerId}
+									>
+										{connecting && selectedPeerId === peer.peerId
+											? 'Connecting...'
+											: 'Connect'}
+									</Button>
+								</div>
+							))}
+						</div>
+					)}
+
+					<div className="flex justify-end mt-2">
+						<Button
+							onClick={loadPeers}
+							variant="secondary"
+							size="xs"
+							disabled={loading}
+						>
+							{loading ? 'Refreshing...' : 'Refresh Peers'}
+						</Button>
+					</div>
 				</div>
 			)}
 		</motion.div>

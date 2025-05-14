@@ -1,20 +1,70 @@
+import { fetchAll, addRecord, editRecord, deleteRecord } from './api-service';
 import { useUserName } from './user-service';
 
 const LOCAL_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
-// Fetch all available DHT services
+/**
+ * Backend API methods for DHT service management
+ */
 export const fetchDhtServices = async () => {
+	return fetchAll('/api/dht-services');
+};
+
+export const addDhtService = async (name, url, port) => {
+	const finalUrl = formatUrlWithPort(url, port);
+	return addRecord('/api/dht-services', { name, url: finalUrl });
+};
+
+export const editDhtService = async (id, name, url, port) => {
+	const finalUrl = formatUrlWithPort(url, port);
+	return editRecord('/api/dht-services', id, { name, url: finalUrl });
+};
+
+export const deleteDhtService = async (id) => {
+	return deleteRecord('/api/dht-services', id);
+};
+
+/**
+ * DHT server communication methods
+ */
+export const registerWithDht = async (dhtUrl) => {
 	try {
-		const response = await fetch(`${LOCAL_BACKEND_URL}/api/dht-services`);
-		if (!response.ok) throw new Error('Failed to fetch DHT services');
+		const timestamp = Date.now();
+		const peerId = `user-${timestamp}-${useUserName()}`;
+
+		const response = await fetch(`${dhtUrl}/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				peerId,
+				name: useUserName(),
+				lastSeen: timestamp
+			})
+		});
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			throw new Error(`Failed to register with DHT service: ${errorText}`);
+		}
+
 		return await response.json();
 	} catch (error) {
-		console.error('Error fetching DHT services:', error);
+		console.error('Error registering with DHT:', error);
 		throw error;
 	}
 };
 
-// Get signals for a specific peer
+export const findPeersFromDht = async (dhtUrl) => {
+	try {
+		const response = await fetch(`${dhtUrl}/peers`);
+		if (!response.ok) throw new Error('Failed to fetch peers from DHT service');
+		return await response.json();
+	} catch (error) {
+		console.error('Error finding peers from DHT:', error);
+		throw error;
+	}
+};
+
 export const checkForSignals = async (dhtUrl, peerId) => {
 	try {
 		const response = await fetch(`${dhtUrl}/signal/${peerId}`);
@@ -26,92 +76,17 @@ export const checkForSignals = async (dhtUrl, peerId) => {
 	}
 };
 
-// Add a new DHT service
-export const addDhtService = async (name, url, port) => {
-	try {
-		// Ensure the URL has a port if specified
-		const finalUrl = port ?
-			(url.includes('://') ?
-				`${url.split(':').slice(0, 2).join(':')}:${port}` :
-				`${url}:${port}`
-			) : url;
+/**
+ * Helper functions
+ */
+function formatUrlWithPort(url, port) {
+	if (!port) return url;
 
-		const response = await fetch(`${LOCAL_BACKEND_URL}/api/dht-services`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ name, url: finalUrl })
-		});
-
-		if (!response.ok) {
-			const error = await response.json();
-			throw new Error(error.error || 'Failed to add DHT service');
-		}
-
-		return await response.json();
-	} catch (error) {
-		console.error('Error adding DHT service:', error);
-		throw error;
+	if (url.includes('://')) {
+		// Handle URLs with protocol (http://, https://, wss://, etc.)
+		return `${url.split(':').slice(0, 2).join(':')}:${port}`;
 	}
-};
 
-// Delete a DHT service
-export const deleteDhtService = async (id) => {
-	try {
-		const response = await fetch(`${LOCAL_BACKEND_URL}/api/dht-services/${id}`, {
-			method: 'DELETE'
-		});
-
-		if (!response.ok) throw new Error('Failed to delete DHT service');
-		return await response.json();
-	} catch (error) {
-		console.error('Error deleting DHT service:', error);
-		throw error;
-	}
-};
-
-// Register with a DHT service
-export const registerWithDht = async (dhtUrl) => {
-	const timestamp = Date.now();
-	const peerId = `user-${timestamp}-${useUserName()}`;
-
-	console.log(`Attempting to register with DHT at ${dhtUrl}`);
-
-	try {
-		const response = await fetch(`${dhtUrl}/register`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				peerId,
-				name: useUserName(),
-				lastSeen: timestamp
-			})
-		});
-
-		console.log(`DHT registration response status: ${response.status}`);
-
-		if (!response.ok) {
-			const errorText = await response.text();
-			console.error(`DHT registration failed: ${errorText}`);
-			throw new Error('Failed to register with DHT service');
-		}
-
-		const result = await response.json();
-		console.log(`DHT registration successful:`, result);
-		return result;
-	} catch (error) {
-		console.error('Error registering with DHT:', error);
-		throw error;
-	}
-};
-
-// Find peers from a DHT service
-export const findPeersFromDht = async (dhtUrl) => {
-	try {
-		const response = await fetch(`${dhtUrl}/peers`);
-		if (!response.ok) throw new Error('Failed to fetch peers from DHT service');
-		return await response.json();
-	} catch (error) {
-		console.error('Error finding peers from DHT:', error);
-		throw error;
-	}
-};
+	// Handle URLs without protocol
+	return `${url}:${port}`;
+}

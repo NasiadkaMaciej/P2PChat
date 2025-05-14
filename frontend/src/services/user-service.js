@@ -15,20 +15,14 @@ export function useUserName() {
  */
 export function updateUserName(name) {
 	myName = name;
-	if (typeof window !== 'undefined') {
-		window.localStorage.setItem('userName', name);
-	}
+	window.localStorage.setItem('userName', name);
 }
 
 /**
  * Initialize username from localStorage if available
  */
 export function initializeUsername() {
-	if (typeof window !== 'undefined') {
-		const savedName = window.localStorage.getItem('userName');
-		if (savedName) {
-			myName = savedName;
-		}
-	}
+	const savedName = window.localStorage.getItem('userName');
+	if (savedName) myName = savedName;
 	return myName;
 }
