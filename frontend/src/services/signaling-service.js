@@ -204,21 +204,26 @@ export async function acceptIncomingConnection(offerPayload, dhtUrl, fromPeerId)
 async function handleIncomingSignals(signals, dhtUrl, peerId) {
 	if (!signals || signals.length === 0) return;
 
-	// We'll only store ICE candidates in the buffer for now
-	const iceCandidates = signals.filter(s => s.type === 'ice-candidate');
-	if (iceCandidates.length > 0) {
-		iceCandidateBuffer.push(...iceCandidates);
-		console.log(`Buffered ${iceCandidates.length} ICE candidates, total in buffer: ${iceCandidateBuffer.length}`);
+	// Group signals by type for simpler processing
+	const signalsByType = signals.reduce((acc, signal) => {
+		if (!acc[signal.type]) acc[signal.type] = [];
+		acc[signal.type].push(signal);
+		return acc;
+	}, {});
+
+	// Buffer ICE candidates for later processing
+	if (signalsByType['ice-candidate']) {
+		iceCandidateBuffer.push(...signalsByType['ice-candidate']);
+		console.log(`Buffered ${signalsByType['ice-candidate'].length} ICE candidates`);
 	}
 
-	// Process offer first - this sets up the connection
-	const offerSignal = signals.find(s => s.type === 'offer');
-	if (offerSignal) {
-		console.log("Received offer from:", offerSignal.from);
-		// Store the remote peer ID
-		window._currentRemotePeer = offerSignal.from;
+	// Process offer/answer signals first
+	const pc = getPeerConnection();
 
-		// Emit an event that a connection request was received
+	// Handle offer - highest priority
+	if (signalsByType.offer && signalsByType.offer[0]) {
+		const offerSignal = signalsByType.offer[0];
+		window._currentRemotePeer = offerSignal.from;
 		window.dispatchEvent(new CustomEvent('peer-connection-request', {
 			detail: {
 				from: offerSignal.from,
@@ -228,21 +233,13 @@ async function handleIncomingSignals(signals, dhtUrl, peerId) {
 		}));
 	}
 
-	// Process answer signal - this completes the connection
-	const answerSignal = signals.find(s => s.type === 'answer');
-	if (answerSignal && getPeerConnection()) {
+	// Handle answer
+	if (signalsByType.answer && signalsByType.answer[0] && pc) {
 		try {
-			console.log("Processing answer signal from:", answerSignal.from);
+			const answerSignal = signalsByType.answer[0];
 			const answerSdp = JSON.parse(answerSignal.payload);
-
-			// Set remote description from the answer
-			await getPeerConnection().setRemoteDescription(new RTCSessionDescription(answerSdp));
-			console.log("Remote description set successfully from answer");
-
-			// NOW we can process buffered ICE candidates since remote description is set
+			await pc.setRemoteDescription(new RTCSessionDescription(answerSdp));
 			await processBufferedIceCandidates();
-
-			// Emit an event that connection has been established
 			window.dispatchEvent(new CustomEvent('peer-connection-established', {
 				detail: { peerId: answerSignal.from }
 			}));
@@ -251,8 +248,8 @@ async function handleIncomingSignals(signals, dhtUrl, peerId) {
 		}
 	}
 
-	// ONLY process ICE candidates if remote description is already set
-	if (getPeerConnection() && getPeerConnection().remoteDescription) {
+	// Process ICE candidates if we're ready
+	if (pc && pc.remoteDescription) {
 		await processBufferedIceCandidates();
 	}
 }
@@ -262,36 +259,23 @@ async function handleIncomingSignals(signals, dhtUrl, peerId) {
  */
 async function processBufferedIceCandidates() {
 	const pc = getPeerConnection();
-	if (!pc || !pc.remoteDescription) {
-		// Only log once instead of both checks
-		console.log("Cannot process ICE candidates - no connection or remote description not set");
-		return;
-	}
-
-	if (iceCandidateBuffer.length === 0) return;
+	if (!pc?.remoteDescription || iceCandidateBuffer.length === 0) return;
 
 	console.log(`Processing ${iceCandidateBuffer.length} buffered ICE candidates`);
 
-	// Use Promise.allSettled for better error handling
-	const results = await Promise.allSettled(
-		iceCandidateBuffer.map(async (signal) => {
-			try {
-				const candidate = JSON.parse(signal.payload);
-				await pc.addIceCandidate(new RTCIceCandidate(candidate));
-				return true;
-			} catch (error) {
-				console.error("Error adding ICE candidate:", error);
-				return false;
-			}
-		})
-	);
+	const remainingCandidates = [];
 
-	// Filter out failed candidates
-	const failedIndices = results.map((result, index) =>
-		result.status === 'rejected' || result.value === false ? index : -1
-	).filter(index => index !== -1);
+	for (const signal of iceCandidateBuffer) {
+		try {
+			const candidate = JSON.parse(signal.payload);
+			await pc.addIceCandidate(new RTCIceCandidate(candidate));
+		} catch (error) {
+			console.error("Error adding ICE candidate:", error);
+			remainingCandidates.push(signal);
+		}
+	}
 
-	iceCandidateBuffer = failedIndices.map(index => iceCandidateBuffer[index]);
+	iceCandidateBuffer = remainingCandidates;
 
 	if (iceCandidateBuffer.length > 0) {
 		console.warn(`${iceCandidateBuffer.length} ICE candidates failed to add. Will retry later.`);
@@ -328,40 +312,19 @@ export async function handleAnswer(answerPayload) {
 	try {
 		console.log("Processing answer:", answerPayload);
 
-		// Check if the answer needs to be parsed
-		let answer;
-		if (typeof answerPayload === 'string') {
-			try {
-				// Try to parse it as JSON
-				answer = JSON.parse(answerPayload);
-			} catch (e) {
-				console.error("Failed to parse answer payload:", e);
-				throw new Error("Invalid answer format");
-			}
-		} else {
-			// Already an object
-			answer = answerPayload;
-		}
+		// Use a single parsing approach
+		const answer = typeof answerPayload === 'string'
+			? JSON.parse(answerPayload)
+			: answerPayload;
 
-		// Ensure answer has the correct format for RTCSessionDescription
-		if (!answer || !answer.type || !answer.sdp) {
-			console.error("Invalid answer format:", answer);
+		if (!answer?.type || !answer?.sdp) {
 			throw new Error("Invalid answer format - missing type or sdp");
 		}
 
 		const pc = getPeerConnection();
-		if (!pc) {
-			throw new Error("No active peer connection");
-		}
+		if (!pc) throw new Error("No active peer connection");
 
-		// Create a proper RTCSessionDescription
-		const remoteDesc = new RTCSessionDescription({
-			type: answer.type,
-			sdp: answer.sdp
-		});
-
-		// Set the remote description
-		await pc.setRemoteDescription(remoteDesc);
+		await pc.setRemoteDescription(new RTCSessionDescription(answer));
 		console.log("Remote description set successfully");
 
 		return true;

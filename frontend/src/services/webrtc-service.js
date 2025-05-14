@@ -30,28 +30,6 @@ export async function createOffer() {
 }
 
 /**
- * Accept an answer to establish a connection
- */
-export async function acceptAnswer(answerString) {
-	try {
-		const answer = JSON.parse(answerString);
-		const peerConnection = getPeerConnection();
-
-		if (!peerConnection) {
-			throw new Error('No active connection');
-		}
-
-		await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-		console.log('Remote description set successfully');
-
-		return true;
-	} catch (error) {
-		console.error('Error accepting answer:', error);
-		throw new Error(`Failed to accept answer: ${error.message}`);
-	}
-}
-
-/**
  * Create an answer in response to an offer
  */
 export async function createAnswer(offerString) {

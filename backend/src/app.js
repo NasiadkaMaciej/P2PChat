@@ -148,38 +148,26 @@ app.get('/api/dht-services', async (req, res) => {
 // Add a new DHT service
 app.post('/api/dht-services', async (req, res) => {
 	try {
-		const { name, url, port } = req.body;
+		const { name, url } = req.body;
 
 		if (!name || !url) {
 			return res.status(400).json({ error: 'Name and URL are required' });
 		}
 
-		// Construct the full URL with port if provided
-		let fullUrl = url;
-		if (port) {
-			try {
-				const urlObj = new URL(url);
-				urlObj.port = port;
-				fullUrl = urlObj.toString();
-			} catch (e) {
-				// If URL parsing fails, try a simpler approach
-				fullUrl = `${url}:${port}`;
-			}
-		}
-
 		// Validate URL
 		try {
-			new URL(fullUrl);
+			new URL(url);
 		} catch (e) {
 			return res.status(400).json({ error: 'Invalid URL format' });
 		}
 
-		const existingService = await DhtService.findOne({ url: fullUrl });
+		// Check if service with this URL exists
+		const existingService = await DhtService.findOne({ url });
 		if (existingService) {
 			return res.status(409).json({ error: 'A DHT service with this URL already exists' });
 		}
 
-		const newService = new DhtService({ name, url: fullUrl });
+		const newService = new DhtService({ name, url });
 		await newService.save();
 
 		res.status(201).json(newService);
@@ -208,51 +196,40 @@ app.put('/api/dht-services/:id/ping', async (req, res) => {
 app.put('/api/dht-services/:id', async (req, res) => {
 	try {
 		const { id } = req.params;
-		const { name, url, port } = req.body;
+		const { name, url } = req.body;
 
 		if (!name || !url) {
 			return res.status(400).json({ error: 'Name and URL are required' });
 		}
 
-		const service = await DhtService.findById(id);
-		if (!service) {
-			return res.status(404).json({ error: 'DHT service not found' });
-		}
-
-		// Construct the full URL with port if provided
-		let fullUrl = url;
-		if (port) {
-			try {
-				const urlObj = new URL(url);
-				urlObj.port = port;
-				fullUrl = urlObj.toString();
-			} catch (e) {
-				fullUrl = `${url}:${port}`;
-			}
-		}
-
 		// Validate URL
 		try {
-			new URL(fullUrl);
+			new URL(url);
 		} catch (e) {
 			return res.status(400).json({ error: 'Invalid URL format' });
 		}
 
 		// Check if another service with this URL exists
 		const existingService = await DhtService.findOne({
-			_id: { $ne: id },
-			url: fullUrl
+			url,
+			_id: { $ne: id }
 		});
 
 		if (existingService) {
-			return res.status(409).json({ error: 'A DHT service with this URL already exists' });
+			return res.status(409).json({ error: 'Another DHT service with this URL already exists' });
 		}
 
-		service.name = name;
-		service.url = fullUrl;
+		const updatedService = await DhtService.findByIdAndUpdate(
+			id,
+			{ name, url },
+			{ new: true }
+		);
 
-		await service.save();
-		res.json(service);
+		if (!updatedService) {
+			return res.status(404).json({ error: 'DHT service not found' });
+		}
+
+		res.json(updatedService);
 	} catch (error) {
 		console.error('Error updating DHT service:', error);
 		res.status(500).json({ error: 'Error updating DHT service' });

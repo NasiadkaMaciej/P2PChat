@@ -19,8 +19,7 @@ function DhtServiceManager() {
 
 	const initialFormState = {
 		name: '',
-		url: '',
-		port: ''
+		url: ''
 	};
 
 	const {
@@ -37,8 +36,8 @@ function DhtServiceManager() {
 		loadServices: loadDhtServices
 	} = useServiceManagement({
 		fetchServices: fetchDhtServices,
-		addService: (data) => addDhtService(data.name, data.url, data.port),
-		editService: (id, data) => editDhtService(id, data.name, data.url, data.port),
+		addService: (data) => addDhtService(data.name, data.url),
+		editService: (id, data) => editDhtService(id, data.name, data.url),
 		deleteService: deleteDhtService,
 		serviceTypeLabel: 'DHT service',
 		initialFormState
@@ -46,22 +45,9 @@ function DhtServiceManager() {
 
 	// Custom startEdit to handle port extraction
 	const startEdit = (service) => {
-		// Extract port from URL if present
-		let url = service.url;
-		let port = '';
-
-		if (url.includes('://')) {
-			const urlParts = url.split(':');
-			if (urlParts.length > 2) {
-				port = urlParts[urlParts.length - 1];
-				url = urlParts.slice(0, 2).join(':');
-			}
-		}
-
 		setNewService({
 			name: service.name,
-			url: url,
-			port: port
+			url: service.url
 		});
 		baseStartEdit(service);
 	};
@@ -88,8 +74,7 @@ function DhtServiceManager() {
 
 	const formFields = [
 		{ name: 'name', label: 'Name', placeholder: 'My DHT Service' },
-		{ name: 'url', label: 'URL', placeholder: 'wss://dht.example.com' },
-		{ name: 'port', label: 'Port (optional)', placeholder: '443' }
+		{ name: 'url', label: 'URL', placeholder: 'http://dht.example.com:3478' }
 	];
 
 	const renderForm = () => (

@@ -13,3 +13,4 @@ Use nginx to make app available by p2pchat hostname in browser?
 handleoffetandcreateanswer -> createanswer?
 connection-state -> ConnectionContext?
 not needed checks or typeof window?
+ConnectViaDht and ConnectToPeerViaDht?

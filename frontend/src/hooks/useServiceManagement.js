@@ -1,4 +1,3 @@
-// hooks/useServiceManagement.js
 import { useState, useEffect } from 'react';
 import { useConnection } from '@/context/ConnectionContext';
 
@@ -44,15 +43,9 @@ export function useServiceManagement({
 
 		try {
 			setLoading(true);
-			if (editing) {
-				await editService(editing, formData);
-				setEditing(null);
-			} else {
-				await addService(formData);
-			}
-
-			// Reset form and refresh list
+			await (editing ? editService(editing, formData) : addService(formData));
 			setFormData({ ...initialFormState });
+			setEditing(null);
 			setShowForm(false);
 			loadServices();
 		} catch (error) {
@@ -60,21 +53,6 @@ export function useServiceManagement({
 		} finally {
 			setLoading(false);
 		}
-	};
-
-	const startEdit = (service) => {
-		setFormData({
-			...initialFormState,
-			...service
-		});
-		setEditing(service._id);
-		setShowForm(true);
-	};
-
-	const cancelEdit = () => {
-		setEditing(null);
-		setFormData({ ...initialFormState });
-		setShowForm(false);
 	};
 
 	return {
@@ -86,8 +64,16 @@ export function useServiceManagement({
 		setShowForm,
 		editing,
 		handleFormSubmit,
-		startEdit,
-		cancelEdit,
+		startEdit: (service) => {
+			setFormData({ ...initialFormState, ...service });
+			setEditing(service._id);
+			setShowForm(true);
+		},
+		cancelEdit: () => {
+			setEditing(null);
+			setFormData({ ...initialFormState });
+			setShowForm(false);
+		},
 		loadServices
 	};
 }

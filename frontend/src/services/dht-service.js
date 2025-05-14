@@ -10,14 +10,12 @@ export const fetchDhtServices = async () => {
 	return fetchAll('/api/dht-services');
 };
 
-export const addDhtService = async (name, url, port) => {
-	const finalUrl = formatUrlWithPort(url, port);
-	return addRecord('/api/dht-services', { name, url: finalUrl });
+export const addDhtService = async (name, url) => {
+	return addRecord('/api/dht-services', { name, url });
 };
 
-export const editDhtService = async (id, name, url, port) => {
-	const finalUrl = formatUrlWithPort(url, port);
-	return editRecord('/api/dht-services', id, { name, url: finalUrl });
+export const editDhtService = async (id, name, url) => {
+	return editRecord('/api/dht-services', id, { name, url });
 };
 
 export const deleteDhtService = async (id) => {
