@@ -4,38 +4,25 @@ const IceServer = require('../models/ice-server-model');
 const getIceServers = async () => {
 	try {
 		// Get only selected servers from database
-		const dbServers = await IceServer.find({ selected: true });
+		const dbServers = await IceServer.find({});
 
-		// If no servers are selected, find defaults or any server of each type
-		if (dbServers.length === 0) {
-			// Try to find default servers first
-			const defaultServers = await IceServer.find({ isDefault: true });
-			if (defaultServers.length > 0) {
-				dbServers.push(...defaultServers);
-			} else {
-				// If no defaults, select one of each type
-				const stunServer = await IceServer.findOne({ type: 'stun' });
-				const turnServer = await IceServer.findOne({ type: 'turn' });
-
-				if (stunServer) dbServers.push(stunServer);
-				if (turnServer) dbServers.push(turnServer);
-			}
-		}
+		if (dbServers.length === 0) return { iceServers: [] };
 
 		const iceServers = dbServers.map(server => {
 			return {
 				_id: server._id,
+				name: server.name || server.url,
+				type: server.type,
 				urls: server.url,
-				credentialType: 'password',
 				username: server.type === 'turn' ? server.username : undefined,
-				credential: server.type === 'turn' ? server.credential : undefined
+				credential: server.type === 'turn' ? server.credential : undefined,
+				isDefault: server.isDefault
 			};
 		});
 
 		return { iceServers };
 	} catch (error) {
 		console.error('Error fetching ICE servers:', error);
-		// Return empty array as fallback
 		return { iceServers: [] };
 	}
 };

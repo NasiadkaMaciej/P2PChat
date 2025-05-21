@@ -19,7 +19,8 @@ export default function GenericServiceManager({
 	additionalContent,
 	connected,
 	connecting,
-	connectedId
+	connectedId,
+	isSelected,
 }) {
 	const {
 		services,
@@ -57,7 +58,6 @@ export default function GenericServiceManager({
 
 	const renderServiceItem = (service) => (
 		<ServiceItem
-			key={service._id}
 			service={service}
 			onConnect={onConnect ? () => onConnect(service) : undefined}
 			onEdit={() => startEdit(service)}
@@ -72,7 +72,7 @@ export default function GenericServiceManager({
 			onSelect={onSelect ? () => onSelect(service) : undefined}
 			connecting={connecting && connectedId === service._id}
 			connected={connected === service._id}
-			selected={service.selected}
+			selected={isSelected ? isSelected(service) : service.selected}
 			showTypeLabel={showTypeLabel}
 		/>
 	);

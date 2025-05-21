@@ -31,11 +31,10 @@ export default function ServiceItem({
 			{onSelect && (
 				<Button
 					onClick={onSelect}
-					variant={selected ? "secondary" : "primary"}
+					variant={selected ? "danger" : "primary"}
 					size="xs"
-					disabled={selected}
 				>
-					{selected ? 'Selected' : 'Select'}
+					{selected ? 'Unselect' : 'Select'}
 				</Button>
 			)}
 

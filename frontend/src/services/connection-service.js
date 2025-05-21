@@ -17,13 +17,23 @@ export function createPeerConnection() {
 		.then(config => {
 			console.log('Retrieved ICE servers:', config);
 
-			// Extract the iceServers array from the config object
-			const { iceServers } = config;
+			// Get selected server IDs from localStorage
+			const selectedIds = JSON.parse(localStorage.getItem('selectedIceServers') || '[]');
 
-			// Fallback to empty array if no servers were returned
-			const servers = iceServers || [];
+			// Filter to only use selected servers or all if none selected
+			let servers = config.iceServers;
+			if (selectedIds.length > 0) {
+				servers = servers.filter(server => selectedIds.includes(server._id));
+			}
 
-			if (servers.length === 0) {
+			// Format for RTCPeerConnection
+			const iceServers = servers.map(server => ({
+				urls: server.urls,
+				username: server.username,
+				credential: server.credential
+			}));
+
+			if (iceServers.length === 0) {
 				console.warn('No ICE servers configured! Connections may fail.');
 			}
 
@@ -31,7 +41,7 @@ export function createPeerConnection() {
 			if (peerConnection) closeConnection();
 
 			// Create RTCPeerConnection with the iceServers array
-			peerConnection = new RTCPeerConnection({ iceServers: servers });
+			peerConnection = new RTCPeerConnection({ iceServers });
 
 			// Set up connection state change handler
 			peerConnection.onconnectionstatechange = () => {

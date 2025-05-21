@@ -24,22 +24,22 @@ const validateIceServer = (req) => {
 	if (!name || !type || !url) return false;
 
 	const serverType = type.toLowerCase();
-	// Additional validation for TURN servers
+
 	if (serverType === 'turn' && (!username || !credential)) return false;
 
-	return {
+	const serverData = {
 		name,
 		type: serverType,
-		url,
-		username: serverType === 'turn' ? username : undefined,
-		credential: serverType === 'turn' ? credential : undefined
+		url
 	};
-};
 
-// Check if server is a default server
-const checkIfDefault = async (server, data) => {
-	if (server.isDefault) throw new Error('Default servers cannot be modified');
-	return data;
+	// Only add these fields for TURN servers
+	if (serverType === 'turn') {
+		serverData.username = username;
+		serverData.credential = credential;
+	}
+
+	return serverData;
 };
 
 // Add a new ICE server
@@ -54,58 +54,9 @@ router.put('/:id', updateResource(
 	IceServer,
 	validateIceServer,
 	(Model, data, currentId) => resourceExistsByUrlCheck(Model, data, currentId),
-	checkIfDefault
 ));
 
 // Delete an ICE server
 router.delete('/:id', deleteResource(IceServer));
-
-// Select an ICE server
-router.put('/:id/select', async (req, res) => {
-	try {
-		const { id } = req.params;
-		const server = await IceServer.findById(id);
-
-		if (!server) return res.status(404).json({ error: 'ICE server not found' });
-
-		// Find currently selected server of the same type and deselect it
-		const currentlySelected = await IceServer.findOne({
-			type: server.type,
-			selected: true,
-		});
-
-		if (currentlySelected) {
-			currentlySelected.selected = false;
-			await currentlySelected.save();
-		}
-
-		// Select the requested server
-		server.selected = true;
-		await server.save();
-
-		res.json(server);
-	} catch (error) {
-		console.error('Error selecting ICE server:', error);
-		res.status(500).json({ error: 'Error selecting ICE server' });
-	}
-});
-
-// Deselect an ICE server
-router.put('/:id/deselect', async (req, res) => {
-	try {
-		const { id } = req.params;
-		const server = await IceServer.findById(id);
-
-		if (!server) return res.status(404).json({ error: 'ICE server not found' });
-
-		server.selected = false;
-		await server.save();
-
-		res.json(server);
-	} catch (error) {
-		console.error('Error deselecting ICE server:', error);
-		res.status(500).json({ error: 'Error deselecting ICE server' });
-	}
-});
 
 module.exports = router;

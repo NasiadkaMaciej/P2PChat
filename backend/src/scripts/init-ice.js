@@ -25,13 +25,11 @@ async function initIceServers() {
 				if (!stunUrl.trim()) continue;
 
 				try {
-					const hostname = new URL(stunUrl.trim()).hostname;
 					await IceServer.create({
-						name: `Default STUN Server (${hostname})`,
+						name: `Default STUN Server`,
 						type: 'stun',
 						url: stunUrl.trim(),
 						isDefault: true,
-						selected: true // Select the default STUN server
 					});
 					console.log(`Added default STUN server: ${stunUrl.trim()}`);
 				} catch (error) {
@@ -46,15 +44,13 @@ async function initIceServers() {
 
 			if (turnServerUrl && username && credential) {
 				try {
-					const hostname = new URL(turnServerUrl).hostname;
 					await IceServer.create({
-						name: `Default TURN Server (${hostname})`,
+						name: `Default TURN Server`,
 						type: 'turn',
 						url: turnServerUrl,
 						username,
 						credential,
 						isDefault: true,
-						selected: true // Select the default TURN server
 					});
 					console.log(`Added default TURN server: ${turnServerUrl}`);
 				} catch (error) {
