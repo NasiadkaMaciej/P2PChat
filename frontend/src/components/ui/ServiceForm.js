@@ -1,4 +1,3 @@
-// components/ui/ServiceForm.js
 import React from 'react';
 import Button from './Button';
 
@@ -35,7 +34,7 @@ function ServiceForm({ formData, onChange, onSubmit, onCancel, fields, isEditing
 									value={formData[field.name] || ''}
 									onChange={(e) => onChange({ ...formData, [field.name]: e.target.value })}
 									className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white text-sm"
-									placeholder={field.placeholder}
+									placeholder={typeof field.placeholder === 'function' ? field.placeholder(formData) : field.placeholder}
 								/>
 							)}
 						</div>

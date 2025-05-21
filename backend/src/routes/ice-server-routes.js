@@ -72,7 +72,6 @@ router.put('/:id/select', async (req, res) => {
 		const currentlySelected = await IceServer.findOne({
 			type: server.type,
 			selected: true,
-			_id: { $ne: server._id }
 		});
 
 		if (currentlySelected) {

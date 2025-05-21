@@ -1,13 +1,18 @@
-import React, { useState } from 'react';
+'use client';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { updateUserName, useUserName } from '../../services/user-service';
+import { updateUserName, useUserName, initializeUsername } from '../../services/user-service';
 import { fadeIn } from '../../utils/animation-utils';
 import Button from '../ui/Button';
 
 function UsernameInput() {
-	const currentName = useUserName();
-	const [username, setUsername] = useState(currentName);
 	const [isEditing, setIsEditing] = useState(false);
+	const [username, setUsername] = useState('');
+	const currentName = useUserName();
+
+	useEffect(() => {
+		setUsername(initializeUsername());
+	}, []);
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
@@ -18,28 +23,25 @@ function UsernameInput() {
 	};
 
 	return (
-		<div className="p-2 bg-gray-800 border-b border-gray-700">
+		<div className="border-b border-gray-700 p-3 bg-gray-800/40">
 			<AnimatePresence mode="wait">
 				{isEditing ? (
 					<motion.form
 						onSubmit={handleSubmit}
-						className="flex"
-						key="edit-form"
+						className="flex gap-2"
+						{...fadeIn}
+						key="edit-name"
 					>
 						<input
+							key="username-input"
 							type="text"
 							value={username}
 							onChange={(e) => setUsername(e.target.value)}
-							className="flex-1 bg-gray-700 text-white px-2 py-1 rounded"
+							className="flex-1 bg-gray-700 px-3 py-2 text-white rounded-md focus:outline-none"
+							placeholder="Enter username"
 							autoFocus
 						/>
-						<Button
-							type="submit"
-							className="ml-2"
-							variant="primary"
-						>
-							Save
-						</Button>
+						<Button type="submit" key="save-button">Save</Button>
 					</motion.form>
 				) : (
 					<motion.div
@@ -51,6 +53,7 @@ function UsernameInput() {
 							Username: <span className="text-blue-400 font-medium">{currentName}</span>
 						</span>
 						<Button
+							key="change-button"
 							onClick={() => setIsEditing(true)}
 							className="text-xs"
 							variant="secondary"

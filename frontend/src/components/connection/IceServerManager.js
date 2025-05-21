@@ -1,11 +1,50 @@
 'use client';
 import React from 'react';
-import {
-	fetchIceServers, addIceServer, editIceServer, deleteIceServer,
-	selectIceServer, deselectIceServer
-} from '@/services/ice-service.js';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import GenericServiceManager from '../ui/GenericServiceManager';
+import { fetchAll, addRecord, editRecord, deleteRecord, performAction } from '@/services/api-service';
+
+// Fetch all available ICE servers
+const fetchIceServers = async () => {
+	const response = await fetchAll('/api/ice-servers');
+	if (response && response.iceServers) {
+		return response.iceServers.map((server, index) => ({
+			_id: server._id,
+			name: server.name || server.url,
+			type: server.urls.startsWith('stun:') ? 'stun' : 'turn',
+			url: server.urls,
+			username: server.username || '',
+			credential: server.credential || '',
+			selected: server.selected || false
+		}));
+	}
+	return [];
+};
+
+// Add a new ICE server
+const addIceServer = async (name, type, url, username, credential) => {
+	return addRecord('/api/ice-servers', { name, type, url, username, credential });
+};
+
+// Edit an ICE server
+const editIceServer = async (id, name, type, url, username, credential) => {
+	return editRecord('/api/ice-servers', id, { name, type, url, username, credential });
+};
+
+// Delete an ICE server
+const deleteIceServer = async (id) => {
+	return deleteRecord('/api/ice-servers', id);
+};
+
+// Select an ICE server
+const selectIceServer = async (id) => {
+	return performAction('/api/ice-servers', id, 'select');
+};
+
+// Deselect an ICE server
+const deselectIceServer = async (id) => {
+	return performAction('/api/ice-servers', id, 'deselect');
+};
 
 function IceServerManager() {
 	const { execute } = useAsyncAction();

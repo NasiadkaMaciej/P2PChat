@@ -1,51 +1,40 @@
 "use client";
-
 import { useUserName } from './user-service';
 
-// Reference to the data channel from connection-service
-let dataChannel = null;
+let currentDataChannel = null;
 
-/**
- * Set data channel reference
- */
-export function setDataChannel(channel) {
-	dataChannel = channel;
+export function setDataChannel(dataChannel) {
+	currentDataChannel = dataChannel;
 }
 
-/**
- * Send message with username and unique ID
- */
-export function sendMessage(message) {
-	if (!dataChannel || dataChannel.readyState !== 'open') {
-		console.error("Cannot send message - data channel not open");
+export function sendMessage(content) {
+	if (!currentDataChannel || currentDataChannel.readyState !== 'open') {
+		console.error('Data channel not open for sending messages');
 		return false;
 	}
 
 	try {
-		const messageData = {
+		const message = {
 			id: generateMessageId(),
+			content,
 			sender: useUserName(),
-			content: message,
 			timestamp: Date.now()
 		};
 
-		dataChannel.send(JSON.stringify(messageData));
+		currentDataChannel.send(JSON.stringify(message));
 
-		// Emit event for local display
+		// Dispatch message event locally to display sent message
 		window.dispatchEvent(new CustomEvent('p2p-message', {
-			detail: JSON.stringify(messageData)
+			detail: JSON.stringify(message)
 		}));
 
 		return true;
 	} catch (error) {
-		console.error("Error sending message:", error);
+		console.error('Error sending message:', error);
 		return false;
 	}
 }
 
-/**
- * Subscribe to messages
- */
 export function subscribeToMessages(callback) {
 	const messageHandler = (event) => {
 		try {
@@ -63,9 +52,6 @@ export function subscribeToMessages(callback) {
 	};
 }
 
-/**
- * Handle incoming data channel messages
- */
 export function handleDataChannelMessage(event) {
 	try {
 		// Dispatch the message event for subscribers
@@ -77,9 +63,6 @@ export function handleDataChannelMessage(event) {
 	}
 }
 
-/**
- * Generate a unique message ID
- */
 function generateMessageId() {
 	return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 }

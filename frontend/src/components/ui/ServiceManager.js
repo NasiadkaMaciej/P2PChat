@@ -1,8 +1,8 @@
 'use client';
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Button from './Button';
-import { fadeIn, slideIn } from '@/utils/animation-utils';
+import { fadeIn } from '@/utils/animation-utils';
 
 /**
  * Reusable component for managing services (ICE servers or DHT services)
@@ -11,18 +11,11 @@ export default function ServiceManager({
 	title,
 	services,
 	loading,
-	selectedService,
 	showAddForm,
-	formValues,
 	onAdd,
-	onEdit,
-	onDelete,
-	onSelect,
 	onCancelEdit,
-	onFormSubmit,
 	renderForm,
 	renderServiceItem,
-	renderServiceList,
 }) {
 	return (
 		<motion.div
@@ -64,16 +57,18 @@ export default function ServiceManager({
 								{services.length} {services.length === 1 ? title.slice(0, -1).toLowerCase() : title.toLowerCase()} available
 							</div>
 
-							{/* Custom service items rendering */}
-							{renderServiceList ? renderServiceList() : services.map(service => (
-								<React.Fragment key={service._id}>
-									{renderServiceItem(service)}
-								</React.Fragment>
-							))}
+							{
+								Array.isArray(services) ? services.map(service => (
+									<React.Fragment key={service.url}>
+										{renderServiceItem(service)}
+									</React.Fragment>
+								)) : <div>No services available</div>
+							}
 						</>
 					)}
 				</div>
-			)}
-		</motion.div>
+			)
+			}
+		</motion.div >
 	);
 }

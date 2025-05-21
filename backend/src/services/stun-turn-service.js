@@ -22,19 +22,14 @@ const getIceServers = async () => {
 			}
 		}
 
-		// Transform to the expected format for WebRTC
 		const iceServers = dbServers.map(server => {
-			const iceServer = {
+			return {
+				_id: server._id,
 				urls: server.url,
-				credentialType: 'password'
+				credentialType: 'password',
+				username: server.type === 'turn' ? server.username : undefined,
+				credential: server.type === 'turn' ? server.credential : undefined
 			};
-
-			if (server.type === 'turn') {
-				iceServer.username = server.username;
-				iceServer.credential = server.credential;
-			}
-
-			return iceServer;
 		});
 
 		return { iceServers };
