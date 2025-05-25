@@ -1,0 +1,74 @@
+services:
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        - NODE_ENV=${NODE_ENV}
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
+    depends_on:
+      - database
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=${BACKEND_PORT}
+      - MONGODB_URI=${MONGODB_URI}
+      - STUN_SERVERS=${STUN_SERVERS}
+      - TURN_SERVER_URL=${TURN_SERVER_URL}
+      - TURN_SERVER_USERNAME=${TURN_SERVER_USERNAME}
+      - TURN_SERVER_CREDENTIAL=${TURN_SERVER_CREDENTIAL}
+      - DEFAULT_DHT_SERVICES=${DEFAULT_DHT_SERVICES}
+    env_file:
+      - .env
+    command: >
+      sh -c "npm start & sleep 10 && node src/scripts/init-dht.js && node src/scripts/init-ice.js && wait"
+
+
+  database:
+    build:
+      context: ./database
+    volumes:
+      - mongo-data:/data/db
+    env_file:
+      - .env
+
+# Add Stun/Turn server
+
+# Make DHT and NGINX optional 
+  dht:
+    build:
+      context: ./dht
+      args:
+        - PORT=${DHT_INTERNAL_PORT}
+    ports:
+      - "${DHT_PORT}:${DHT_INTERNAL_PORT}"
+    environment:
+      - PORT=${DHT_INTERNAL_PORT}
+    volumes:
+      - ./dht:/app
+      - /app/node_modules
+    restart: unless-stopped
+    env_file:
+      - .env
+
+  nginx:
+    build:
+      context: ./nginx
+      args:
+        - NGINX_INTERNAL_PORT=${NGINX_INTERNAL_PORT}
+    ports:
+      - "${DHT_PORT}:${NGINX_INTERNAL_PORT}"
+    depends_on:
+      - frontend
+      - backend
+    environment:
+      - DHT_DOMAIN=${DHT_DOMAIN}
+      - NGINX_INTERNAL_PORT=${NGINX_INTERNAL_PORT}
+      - FRONTEND_INTERNAL_PORT=${FRONTEND_INTERNAL_PORT}
+      - BACKEND_PORT=${BACKEND_PORT}
+    restart: unless-stopped
+    env_file:
+      - .env
+
+volumes:
+  mongo-data:

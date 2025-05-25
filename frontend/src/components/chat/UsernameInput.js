@@ -23,7 +23,7 @@ function UsernameInput() {
 	};
 
 	return (
-		<div className="border-b border-gray-700 p-3 bg-gray-800/40">
+		<div className="w-full">
 			<AnimatePresence mode="wait">
 				{isEditing ? (
 					<motion.form

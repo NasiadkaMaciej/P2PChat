@@ -10,6 +10,7 @@ import DhtServiceManager from '../components/connection/DhtServiceManager';
 import { slideIn } from '../utils/animation-utils';
 import Button from '@/components/ui/Button';
 import IceServerManager from '../components/connection/IceServerManager';
+import UsernameInput from '@/components/chat/UsernameInput';
 
 // Error display component
 const ErrorDisplay = ({ error }) => {
@@ -32,9 +33,9 @@ export default function Home() {
 
 	return (
 		<div className="min-h-screen bg-gray-900 text-gray-200 p-6">
-			<div className="max-w-6xl mx-auto flex flex-col" style={{ minHeight: 'calc(100vh - 3rem)' }}>
+			<div className="max-w-6xl mx-auto flex flex-col space-y-6" style={{ minHeight: 'calc(100vh - 3rem)' }}>
 				{/* Header - Always visible */}
-				<div className="mb-6">
+				<div>
 					<div className="flex justify-between items-center">
 						<h1 className="text-3xl font-bold text-white">P2P Chat</h1>
 						<div className="flex gap-2 items-center">
@@ -48,13 +49,21 @@ export default function Home() {
 							<ConnectionStatus />
 						</div>
 					</div>
-
-					{/* Error Display */}
-					{error && <ErrorDisplay error={error} />}
-
-					{/* ICE Server Manager */}
-					{showIceServerManager && <IceServerManager />}
 				</div>
+
+				{/* Username Container */}
+				<div className="rounded-lg bg-gray-800/50 border border-gray-700 overflow-hidden">
+					<div className="p-4">
+						<h2 className="text-xl font-semibold mb-3">Your Profile</h2>
+						<UsernameInput />
+					</div>
+				</div>
+
+				{/* Error Display */}
+				{error && <ErrorDisplay error={error} />}
+
+				{/* ICE Server Manager */}
+				{showIceServerManager && <IceServerManager />}
 
 				{/* Rest of the existing page content */}
 				<div className="flex-1 flex flex-col">

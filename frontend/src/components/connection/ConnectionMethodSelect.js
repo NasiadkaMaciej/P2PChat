@@ -19,7 +19,7 @@ function ConnectionMethodSelect() {
 		>
 			<h2 className="text-xl mb-2 font-semibold">Choose Connection Method</h2>
 			<div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-				<div className="flex flex-col sm:flex-row gap-3">
+				<div className="flex flex-col sm:flex-row justify-evenly gap-3">
 					{methods.map((method) => (
 						<button
 							key={method.id}
