@@ -52,12 +52,14 @@ export default function Home() {
 				</div>
 
 				{/* Username Container */}
-				<div className="rounded-lg bg-gray-800/50 border border-gray-700 overflow-hidden">
-					<div className="p-4">
-						<h2 className="text-xl font-semibold mb-3">Your Profile</h2>
-						<UsernameInput />
+				{!isConnected && (
+					<div className="rounded-lg bg-gray-800/50 border border-gray-700 overflow-hidden">
+						<div className="p-4">
+							<h2 className="text-xl font-semibold mb-3">Your Profile</h2>
+							<UsernameInput />
+						</div>
 					</div>
-				</div>
+				)}
 
 				{/* Error Display */}
 				{error && <ErrorDisplay error={error} />}

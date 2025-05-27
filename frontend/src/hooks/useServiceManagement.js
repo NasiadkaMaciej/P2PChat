@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useConnection } from '@/context/ConnectionContext';
+import { useConnection } from "@/context/ConnectionContext";
+import { useEffect, useState } from "react";
 
 export function useServiceManagement({
 	fetchServices,
@@ -7,7 +7,7 @@ export function useServiceManagement({
 	editService,
 	deleteService,
 	serviceTypeLabel,
-	initialFormState
+	initialFormState,
 }) {
 	const { setError } = useConnection();
 	const [services, setServices] = useState([]);
@@ -36,12 +36,28 @@ export function useServiceManagement({
 	const handleFormSubmit = async (e) => {
 		e.preventDefault();
 
-		const requiredFields = Object.entries(formData)
+		const isIceServerForm = "type" in formData;
+
+		// Get required fields based on form type
+		let requiredFields = Object.entries(formData)
 			.filter(([key, _]) => initialFormState.hasOwnProperty(key))
-			.filter(([_, value]) => !value);
+			.filter(([key, value]) => {
+				// Special handling for ICE servers
+				if (isIceServerForm) {
+					// For STUN servers, username and credential are not required
+					if (
+						formData.type === "stun" &&
+						(key === "username" || key === "credential")
+					) {
+						return false;
+					}
+				}
+				return !value;
+			})
+			.map(([key]) => key);
 
 		if (requiredFields.length > 0) {
-			setError(`${requiredFields.map(([key]) => key).join(', ')} are required`);
+			setError(`${requiredFields.join(", ")} are required`);
 			return;
 		}
 
@@ -53,7 +69,10 @@ export function useServiceManagement({
 			setShowForm(false);
 			loadServices();
 		} catch (error) {
-			setError(`Failed to ${editing ? 'update' : 'add'} ${serviceTypeLabel}: ${error.message}`);
+			setError(
+				`Failed to ${editing ? "update" : "add"} ${serviceTypeLabel}: ${error.message
+				}`
+			);
 		} finally {
 			setLoading(false);
 		}
@@ -82,6 +101,6 @@ export function useServiceManagement({
 		handleFormSubmit,
 		startEdit,
 		cancelEdit,
-		loadServices
+		loadServices,
 	};
 }
