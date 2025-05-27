@@ -49,43 +49,5 @@ services:
     env_file:
       - .env
 
-# Add Stun/Turn server
-
-# Make DHT and NGINX optional 
-#  dht:
-#    build:
-#      context: ./dht
-#      args:
-#        - PORT=${DHT_INTERNAL_PORT}
-#    ports:
-#      - "${DHT_PORT}:${DHT_INTERNAL_PORT}"
-#    environment:
-#      - PORT=${DHT_INTERNAL_PORT}
-#    volumes:
-#      - ./dht:/app
-#      - /app/node_modules
-#    restart: unless-stopped
-#    env_file:
-#      - .env
-#  # Uncomment only on Mikrus
-#  nginx:
-#    build:
-#      context: ./nginx
-#      args:
-#        - NGINX_INTERNAL_PORT=${NGINX_INTERNAL_PORT}
-#    ports:
-#      - "${DHT_PORT}:${NGINX_INTERNAL_PORT}"
-#    depends_on:
-#      - frontend
-#      - backend
-#    environment:
-#      - DHT_DOMAIN=${DHT_DOMAIN}
-#      - NGINX_INTERNAL_PORT=${NGINX_INTERNAL_PORT}
-#      - FRONTEND_INTERNAL_PORT=${FRONTEND_INTERNAL_PORT}
-#      - BACKEND_PORT=${BACKEND_PORT}
-#    restart: unless-stopped
-#    env_file:
-#      - .env
-
 volumes:
   mongo-data:

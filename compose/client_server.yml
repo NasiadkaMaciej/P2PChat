@@ -49,18 +49,30 @@ services:
     env_file:
       - .env
 
-# Add Stun/Turn server
+  nginx:
+    build:
+      context: ./nginx
+    ports:
+      - "${EXTERNAL_PORT}:${NGINX_INTERNAL_PORT}"
+    environment:
+      - DHT_DOMAIN=${DHT_DOMAIN}
+      - DHT_INTERNAL_PORT=${DHT_INTERNAL_PORT}
+      - STUN_DOMAIN=${STUN_DOMAIN}
+      - STUN_INTERNAL_PORT=${STUN_INTERNAL_PORT}
+      - NGINX_INTERNAL_PORT=${NGINX_INTERNAL_PORT}
+    depends_on:
+      - dht
+      - stunturn
+    restart: unless-stopped
 
-# Make DHT and NGINX optional 
   dht:
     build:
       context: ./dht
       args:
         - PORT=${DHT_INTERNAL_PORT}
-    ports:
-      - "${DHT_PORT}:${DHT_INTERNAL_PORT}"
     environment:
       - PORT=${DHT_INTERNAL_PORT}
+      - HOST=0.0.0.0
     volumes:
       - ./dht:/app
       - /app/node_modules
@@ -68,24 +80,15 @@ services:
     env_file:
       - .env
 
-  nginx:
+  stunturn:
     build:
-      context: ./nginx
-      args:
-        - NGINX_INTERNAL_PORT=${NGINX_INTERNAL_PORT}
-    ports:
-      - "${DHT_PORT}:${NGINX_INTERNAL_PORT}"
-    depends_on:
-      - frontend
-      - backend
-    environment:
-      - DHT_DOMAIN=${DHT_DOMAIN}
-      - NGINX_INTERNAL_PORT=${NGINX_INTERNAL_PORT}
-      - FRONTEND_INTERNAL_PORT=${FRONTEND_INTERNAL_PORT}
-      - BACKEND_PORT=${BACKEND_PORT}
+      context: ./stunturn
+    network_mode: host
+    volumes:
+      - ./stunturn/turnserver.conf:/etc/coturn/turnserver.conf
     restart: unless-stopped
-    env_file:
-      - .env
+    command: 
+      - -c /etc/coturn/turnserver.conf
 
 volumes:
   mongo-data:

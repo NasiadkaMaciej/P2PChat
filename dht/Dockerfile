@@ -10,7 +10,7 @@ RUN npm install
 COPY . .
 
 # Default port
-ARG PORT=3478
+ARG PORT=3479
 ENV PORT=${PORT}
 
 # Expose the port
