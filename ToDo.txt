@@ -1,17 +1,9 @@
 Implement Encryption?
-Add expandable signaling servers
 IMPORTANT! Implement file sending functionality
-Create container with stun/turn server
-Look up bake for build optimization
-Create bash script to generate docker-compose.yml and .env with user options (dev/prod, dht, domains, ports, etc.)
 Replace console.log with NODE_ENV aware logging function
-Add more DHT services
-State service? Move to context?
-Add option to remove DHT service
-Set nickname before joining?
 Use nginx to make app available by p2pchat hostname in browser?
 handleoffetandcreateanswer -> createanswer?
 connection-state -> ConnectionContext?
 not needed checks or typeof window?
 ConnectViaDht and ConnectToPeerViaDht?
-Hot reload for backend
+Health check

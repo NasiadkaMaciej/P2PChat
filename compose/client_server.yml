@@ -84,8 +84,6 @@ services:
     build:
       context: ./stunturn
     network_mode: host
-    volumes:
-      - ./stunturn/turnserver.conf:/etc/coturn/turnserver.conf
     restart: unless-stopped
     command: 
       - -c /etc/coturn/turnserver.conf

@@ -65,12 +65,13 @@ configure_turn_server() {
   # Create directory if it doesn't exist
   mkdir -p stunturn
   
-  local realm="ice.nasiadka.pl"
+  local realm="${TURN_REALM:-nasiadka.pl}"
+  local server_name="${TURN_SERVER_NAME:-ice.nasiadka.pl}"
   
   cat > stunturn/turnserver.conf <<EOF
 listening-port=3478
-realm=nasiadka.pl
-server-name=ice.nasiadka.pl
+realm=${realm}
+server-name=${server_name}
 no-multicast-peers
 fingerprint
 log-file=/var/log/turnserver/turnserver.log
@@ -79,17 +80,17 @@ lt-cred-mech
 user=Maciej:Maciej
 max-bps=0
 userdb=/var/lib/turn/turndb
-min-port=49152-
+min-port=49152
 max-port=51800
 no-stdout-log
 log-level=1
 Verbose
-relay-ip=91.224.116.25
-external-ip=91.224.116.25
 EOF
  ##### IMPORTANT, MAKE SSL OPTIONAL
+  # Add external IP if provided
   if [ ! -z "$EXTERNAL_IP" ]; then
     echo "external-ip=$EXTERNAL_IP" >> stunturn/turnserver.conf
+    echo "relay-ip=$EXTERNAL_IP" >> stunturn/turnserver.conf
   fi
   
   echo -e "${YELLOW}TURN server configuration created at stunturn/turnserver.conf${NC}"
