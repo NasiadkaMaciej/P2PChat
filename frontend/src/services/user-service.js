@@ -1,8 +1,8 @@
 "use client";
 
 // Default username with random number
-let myName = "User_" + Math.floor(Math.random() * 1000);
 
+let myName = "";
 /**
  * Get current username
  */
@@ -24,5 +24,6 @@ export function updateUserName(name) {
 export function initializeUsername() {
 	const savedName = window.localStorage.getItem('userName');
 	if (savedName) myName = savedName;
+	else myName = "User_" + Math.floor(Math.random() * 1000);
 	return myName;
 }
