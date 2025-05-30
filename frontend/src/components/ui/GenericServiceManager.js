@@ -83,7 +83,6 @@ export default function GenericServiceManager({
 				title={title}
 				services={services}
 				loading={loading}
-				selectedService={connected}
 				showAddForm={showForm}
 				formValues={{ editing: !!editing }}
 				onAdd={() => {

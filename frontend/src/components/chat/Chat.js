@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { useConnection } from '../../context/ConnectionContext';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
-import { subscribeToMessages, sendMessage } from '../../services/message-service';
+import { subscribeToMessages } from '../../services/message-service';
 import { scaleIn, interactive } from '../../utils/animation-utils';
 
 function Chat() {

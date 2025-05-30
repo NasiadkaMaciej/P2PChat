@@ -21,10 +21,3 @@ export function updateConnectionState(state) {
 	connectionState = state;
 	subscribers.forEach(callback => callback(state));
 }
-
-/**
- * Get current connection state
- */
-export function getConnectionState() {
-	return connectionState;
-}

@@ -3,15 +3,13 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useConnection } from '../context/ConnectionContext';
 import Chat from '../components/chat/Chat';
-import ConnectionStatus from '../components/connection/ConnectionStatus';
 import OfferAnswerExchange from '../components/connection/OfferAnswerExchange';
 import ConnectionMethodSelect from '../components/connection/ConnectionMethodSelect';
 import DhtServiceManager from '../components/connection/DhtServiceManager';
 import { slideIn } from '../utils/animation-utils';
-import Button from '@/components/ui/Button';
 import IceServerManager from '../components/connection/IceServerManager';
 import UsernameInput from '@/components/chat/UsernameInput';
-import HelpCenter from '@/components/HelpCenter';
+import HelpPopup from '../components/ui/HelpPopup';
 
 // Error display component
 const ErrorDisplay = ({ error }) => {
@@ -33,7 +31,24 @@ const ConnectionSettings = () => {
 	return (
 		<div className="rounded-lg bg-gray-800/50 border border-gray-700 overflow-hidden mb-6">
 			<div className="p-4">
-				<h2 className="text-xl font-semibold mb-3">Connection Settings</h2>
+				<div className="flex items-center mb-3">
+					<h2 className="text-xl font-semibold">Connection Settings</h2>
+					<HelpPopup title="Connection Settings">
+						<p className="mb-3">
+							Before starting a chat, configure your connection settings. Set your username
+							and configure ICE servers that will help establish a direct peer-to-peer connection.
+						</p>
+						<h4 className="font-medium mb-2">Username</h4>
+						<p className="mb-3">
+							Your username will be visible to peers you connect with. It helps identify you in the chat.
+						</p>
+						<h4 className="font-medium mb-2">ICE Servers</h4>
+						<p>
+							ICE servers help establish direct connections between peers, especially when
+							they are behind firewalls or NATs. You can use the default servers or add your own.
+						</p>
+					</HelpPopup>
+				</div>
 
 				<div className="flex border-b border-gray-700 mb-4">
 					<button
@@ -78,13 +93,8 @@ export default function Home() {
 				<div>
 					<div className="flex justify-between items-center">
 						<h1 className="text-3xl font-bold text-white">P2P Chat</h1>
-						<div className="flex gap-2 items-center">
-							<ConnectionStatus />
-						</div>
 					</div>
 				</div>
-
-				<HelpCenter />
 
 				{/* Error Display */}
 				{error && <ErrorDisplay error={error} />}

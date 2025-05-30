@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import GenericServiceManager from '../ui/GenericServiceManager';
 import { fetchAll, addRecord, editRecord, deleteRecord } from '@/services/api-service';
+import HelpPopup from '../ui/HelpPopup';
 
 // Fetch all available ICE servers
 const fetchIceServers = async () => {
@@ -179,23 +180,62 @@ function IceServerManager() {
 	};
 
 	return (
-		<GenericServiceManager
-			title="ICE Servers"
-			serviceTypeLabel="ICE Server"
-			initialFormState={initialFormState}
-			fetchServices={fetchIceServers}
-			addService={(data) => addIceServer(
-				data.name, data.type, data.url, data.username, data.credential
-			)}
-			editService={(id, data) => editIceServer(
-				id, data.name, data.type, data.url, data.username, data.credential
-			)}
-			deleteService={deleteIceServer}
-			onSelect={handleSelectServer}
-			showTypeLabel={true}
-			formFields={formFields}
-			isSelected={isServerSelected}
-		/>
+		<>
+			<div className="flex items-center mb-3">
+				<h3 className="text-lg font-medium text-white">ICE Servers</h3>
+				<HelpPopup title="ICE Servers">
+					<h4 className="font-medium mb-2">What are ICE Servers?</h4>
+					<p className="mb-3">
+						ICE (Interactive Connectivity Establishment) servers help WebRTC connections establish
+						direct peer-to-peer communication across different network environments, particularly
+						when peers are behind firewalls, NATs, or other network obstacles.
+					</p>
+
+					<h4 className="font-medium mb-2">Difference Between STUN and TURN</h4>
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+						<div className="bg-gray-900 p-3 rounded-md">
+							<h5 className="text-blue-400 mb-1">STUN Servers</h5>
+							<ul className="list-disc pl-5 space-y-1 text-sm">
+								<li><strong>Purpose</strong>: Discovers your public IP address</li>
+								<li><strong>Usage</strong>: Lightweight, used first</li>
+								<li><strong>Success Rate</strong>: Works for ~85% of cases</li>
+							</ul>
+						</div>
+						<div className="bg-gray-900 p-3 rounded-md">
+							<h5 className="text-green-400 mb-1">TURN Servers</h5>
+							<ul className="list-disc pl-5 space-y-1 text-sm">
+								<li><strong>Purpose</strong>: Acts as a relay when direct connections fail</li>
+								<li><strong>Usage</strong>: Fallback when STUN fails</li>
+								<li><strong>Success Rate</strong>: Resolves ~99% of cases</li>
+							</ul>
+						</div>
+					</div>
+
+					<h4 className="font-medium mb-2">Privacy Considerations</h4>
+					<p className="text-sm">
+						STUN servers reveal your IP address to peers. TURN servers can provide IP anonymization,
+						but the TURN provider can see your traffic. Use trusted servers for sensitive communications.
+					</p>
+				</HelpPopup>
+			</div>
+			<GenericServiceManager
+				title="ICE Servers"
+				serviceTypeLabel="ICE Server"
+				initialFormState={initialFormState}
+				fetchServices={fetchIceServers}
+				addService={(data) => addIceServer(
+					data.name, data.type, data.url, data.username, data.credential
+				)}
+				editService={(id, data) => editIceServer(
+					id, data.name, data.type, data.url, data.username, data.credential
+				)}
+				deleteService={deleteIceServer}
+				onSelect={handleSelectServer}
+				showTypeLabel={true}
+				formFields={formFields}
+				isSelected={isServerSelected}
+			/>
+		</>
 	);
 }
 

@@ -41,36 +41,6 @@ export const interactive = (disabled = false) => disabled ? {} : {
 	whileTap: { scale: 0.97 }
 };
 
-// Status indicator animations (connection states, etc)
-export const statusIndicator = {
-	connecting: {
-		backgroundColor: "#facc15",
-		transition: { duration: 0.3 }
-	},
-	connected: {
-		backgroundColor: "#4ade80",
-		boxShadow: "0 0 10px 2px rgba(74, 222, 128, 0.5)",
-		transition: { duration: 0.3 }
-	},
-	disconnected: {
-		backgroundColor: "#9ca3af",
-		transition: { duration: 0.3 }
-	},
-	failed: {
-		backgroundColor: "#ef4444",
-		boxShadow: "0 0 10px 2px rgba(239, 68, 68, 0.5)",
-		transition: { duration: 0.3 }
-	}
-};
-
-// Text color animation based on state
-export const textColorAnimation = (colorMap, state) => ({
-	animate: {
-		color: colorMap[state] || colorMap.default,
-		transition: { duration: 0.3 }
-	}
-});
-
 // For list items that need staggered animation
 export const listItem = (index = 0) => ({
 	initial: { opacity: 0, y: 10 },

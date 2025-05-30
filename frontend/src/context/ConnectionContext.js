@@ -14,8 +14,6 @@ export function ConnectionProvider({ children }) {
 	const [error, setError] = useState('');
 	const [connectionMethod, setConnectionMethod] = useState('offer-answer');
 	const [selectedDht, setSelectedDht] = useState(null);
-	const [dhtConnected, setDhtConnected] = useState(false);
-	const [showIceServerManager, setShowIceServerManager] = useState(false);
 
 	// Initialize app and subscribe to connection state
 	useEffect(() => {
@@ -50,10 +48,6 @@ export function ConnectionProvider({ children }) {
 		setConnectionMethod,
 		selectedDht,
 		setSelectedDht,
-		dhtConnected,
-		setDhtConnected,
-		showIceServerManager,
-		setShowIceServerManager,
 		disconnect
 	};
 
