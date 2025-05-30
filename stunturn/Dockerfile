@@ -1,13 +1,15 @@
 FROM coturn/coturn:latest
 
-USER root
-RUN mkdir -p /etc/coturn
-COPY stunturn/turnserver.conf /etc/coturn/turnserver.conf
-RUN chmod 777 /etc/coturn/turnserver.conf
-RUN chown nobody:nogroup /etc/coturn/turnserver.conf
-USER nobody
+ARG STUN_INTERNAL_PORT=3478
+ARG TURN_INTERNAL_PORT=3478
+ARG MIN_TURN_PORT=49152
+ARG MAX_TURN_PORT=51800
 
-EXPOSE 3478/tcp 3478/udp 49152-51800 49152-51800/udp
+ENV STUN_INTERNAL_PORT=${STUN_INTERNAL_PORT}
+ENV TURN_INTERNAL_PORT=${TURN_INTERNAL_PORT}
+ENV MIN_TURN_PORT=${MIN_TURN_PORT}
+ENV MAX_TURN_PORT=${MAX_TURN_PORT}
 
+EXPOSE ${STUN_INTERNAL_PORT}/tcp ${STUN_INTERNAL_PORT}/udp ${MIN_TURN_PORT}-${MAX_TURN_PORT} ${MIN_TURN_PORT}-${MAX_TURN_PORT}/udp
 
 CMD ["turnserver", "-c", "/etc/coturn/turnserver.conf"]

@@ -3,7 +3,7 @@ const DhtService = require('../models/dht-service-model');
 
 // MongoDB connection string from environment or use default
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/chat-app';
-const DEFAULT_DHT_SERVICES = process.env.DEFAULT_DHT_SERVICES || 'https://dht.nasiadka.pl:3478';
+const DEFAULT_DHT_SERVICES = process.env.DEFAULT_DHT_SERVICES;
 
 async function initializeDefaultDht() {
 	try {

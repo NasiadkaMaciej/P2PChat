@@ -10,10 +10,13 @@ services:
       - STUN_DOMAIN=${STUN_DOMAIN}
       - STUN_INTERNAL_PORT=${STUN_INTERNAL_PORT}
       - NGINX_INTERNAL_PORT=${NGINX_INTERNAL_PORT}
+      - EXTERNAL_PORT=${EXTERNAL_PORT}
     depends_on:
       - dht
       - stunturn
     restart: unless-stopped
+    env_file:
+      - .env
 
   dht:
     build:
@@ -29,10 +32,18 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+
   stunturn:
     build:
       context: ./stunturn
+      args:
+        - STUN_INTERNAL_PORT=${STUN_INTERNAL_PORT}
+        - TURN_INTERNAL_PORT=${TURN_INTERNAL_PORT}
+        - MIN_TURN_PORT=${MIN_TURN_PORT}
+        - MAX_TURN_PORT=${MAX_TURN_PORT}
     network_mode: host
     volumes:
       - ./stunturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
     restart: unless-stopped
+    env_file:
+      - .env
