@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useConnection } from '../context/ConnectionContext';
 import Chat from '../components/chat/Chat';
@@ -11,6 +11,7 @@ import { slideIn } from '../utils/animation-utils';
 import Button from '@/components/ui/Button';
 import IceServerManager from '../components/connection/IceServerManager';
 import UsernameInput from '@/components/chat/UsernameInput';
+import HelpCenter from '@/components/HelpCenter';
 
 // Error display component
 const ErrorDisplay = ({ error }) => {
@@ -26,9 +27,48 @@ const ErrorDisplay = ({ error }) => {
 	);
 };
 
+const ConnectionSettings = () => {
+	const [activeTab, setActiveTab] = useState('profile');
+
+	return (
+		<div className="rounded-lg bg-gray-800/50 border border-gray-700 overflow-hidden mb-6">
+			<div className="p-4">
+				<h2 className="text-xl font-semibold mb-3">Connection Settings</h2>
+
+				<div className="flex border-b border-gray-700 mb-4">
+					<button
+						className={`py-2 px-4 text-sm font-medium ${activeTab === 'profile' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+						onClick={() => setActiveTab('profile')}
+					>
+						Username
+					</button>
+					<button
+						className={`py-2 px-4 text-sm font-medium ${activeTab === 'ice' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+						onClick={() => setActiveTab('ice')}
+					>
+						ICE Servers
+					</button>
+				</div>
+
+				{activeTab === 'profile' && (
+					<div className="py-2">
+						<UsernameInput />
+					</div>
+				)}
+
+				{activeTab === 'ice' && (
+					<div className="py-2">
+						<IceServerManager />
+					</div>
+				)}
+			</div>
+		</div>
+	);
+};
+
 // Main page content
 export default function Home() {
-	const { connectionState, showChat, error, connectionMethod, showIceServerManager, setShowIceServerManager } = useConnection();
+	const { connectionState, showChat, error, connectionMethod } = useConnection();
 	const isConnected = connectionState === 'connected' && showChat;
 
 	return (
@@ -39,33 +79,18 @@ export default function Home() {
 					<div className="flex justify-between items-center">
 						<h1 className="text-3xl font-bold text-white">P2P Chat</h1>
 						<div className="flex gap-2 items-center">
-							<Button
-								onClick={() => setShowIceServerManager(!showIceServerManager)}
-								variant="secondary"
-								className="text-sm"
-							>
-								ICE Servers
-							</Button>
 							<ConnectionStatus />
 						</div>
 					</div>
 				</div>
 
-				{/* Username Container */}
-				{!isConnected && (
-					<div className="rounded-lg bg-gray-800/50 border border-gray-700 overflow-hidden">
-						<div className="p-4">
-							<h2 className="text-xl font-semibold mb-3">Your Profile</h2>
-							<UsernameInput />
-						</div>
-					</div>
-				)}
+				<HelpCenter />
 
 				{/* Error Display */}
 				{error && <ErrorDisplay error={error} />}
 
-				{/* ICE Server Manager */}
-				{showIceServerManager && <IceServerManager />}
+				{/* Connection Settings */}
+				{!isConnected && <ConnectionSettings />}
 
 				{/* Rest of the existing page content */}
 				<div className="flex-1 flex flex-col">
