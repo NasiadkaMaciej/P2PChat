@@ -52,14 +52,11 @@ services:
   nginx:
     build:
       context: ./nginx
-    ports:
-      - "${EXTERNAL_PORT}:${NGINX_INTERNAL_PORT}"
     environment:
       - DHT_DOMAIN=${DHT_DOMAIN}
       - DHT_INTERNAL_PORT=${DHT_INTERNAL_PORT}
       - STUN_DOMAIN=${STUN_DOMAIN}
       - STUN_INTERNAL_PORT=${STUN_INTERNAL_PORT}
-      - NGINX_INTERNAL_PORT=${NGINX_INTERNAL_PORT}
       - EXTERNAL_PORT=${EXTERNAL_PORT}
     depends_on:
       - dht

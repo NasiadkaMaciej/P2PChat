@@ -1,5 +1,5 @@
 server {
-    listen ${NGINX_INTERNAL_PORT};
+    listen ${EXTERNAL_PORT};
     server_name ${DHT_DOMAIN};
 
     location / {
