@@ -3,27 +3,40 @@ const IceServer = require('../models/ice-server-model');
 
 const getIceServers = async () => {
 	try {
-		// Get only selected servers from database
+		// Get servers from database
 		const dbServers = await IceServer.find({});
 
 		if (dbServers.length === 0) return { iceServers: [] };
 
-		const iceServers = dbServers.map(server => {
-			return {
+		// Process and organize servers by type
+		const stunServers = [];
+		const turnServers = [];
+
+		dbServers.forEach(server => {
+			const iceServer = {
 				_id: server._id,
 				name: server.name || server.url,
 				type: server.type,
 				urls: server.url,
-				username: server.type === 'turn' ? server.username : undefined,
-				credential: server.type === 'turn' ? server.credential : undefined,
 				isDefault: server.isDefault
 			};
+
+			if (server.type === 'turn') {
+				iceServer.username = server.username;
+				iceServer.credential = server.credential;
+				turnServers.push(iceServer);
+			} else stunServers.push(iceServer);
 		});
 
-		return { iceServers };
+		// Return both types, but organized for the client to use appropriately
+		return {
+			iceServers: [...stunServers, ...turnServers],
+			stunCount: stunServers.length,
+			turnCount: turnServers.length
+		};
 	} catch (error) {
 		console.error('Error fetching ICE servers:', error);
-		return { iceServers: [] };
+		return { iceServers: [], stunCount: 0, turnCount: 0 };
 	}
 };
 

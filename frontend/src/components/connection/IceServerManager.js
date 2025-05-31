@@ -139,33 +139,8 @@ function IceServerManager() {
 			const isSelected = selectedServers.includes(server._id);
 			let newSelection;
 
-			if (isSelected) {
-				newSelection = selectedServers.filter(id => id !== server._id);
-				saveSelectedServers(newSelection);
-				return true; // Signal success to trigger reload
-			}
-
-			// Adding a new server - need to respect the type constraint
-			const allServers = await fetchIceServers();
-
-			// Get currently selected servers as objects
-			const currentSelectedServers = allServers.filter(s =>
-				selectedServers.includes(s._id)
-			);
-
-			// Find if we already have selected a server of the same type
-			const sameTypeSelected = currentSelectedServers.find(s =>
-				s.type === server.type
-			);
-
-			if (sameTypeSelected) { // Replace the existing server of same type with the new one
-				newSelection = selectedServers.filter(id =>
-					id !== sameTypeSelected._id
-				);
-				newSelection.push(server._id);
-			} else { // No server of this type selected yet, add to selection
-				newSelection = [...selectedServers, server._id];
-			}
+			if (isSelected) newSelection = selectedServers.filter(id => id !== server._id);
+			else newSelection = [...selectedServers, server._id];
 
 			saveSelectedServers(newSelection);
 			return true; // Signal success to trigger reload
