@@ -1,13 +1,14 @@
 "use client";
 
 import { registerWithDht, findPeersFromDht, checkForSignals } from './dht-service';
-import { createPeerConnection, getPeerConnection, setupDataChannel } from './connection-service';
+import { createPeerConnection, getPeerConnection, setupDataChannel, isConnected } from './connection-service';
 import { waitForIceGatheringComplete } from './webrtc-service';
 
 let dhtService = null;
 let dhtPeerId = null;
 let iceCandidateBuffer = [];
 let signalCheckInterval = null;
+let reconnectionHandler = null;
 
 /**
  * Common setup for peer connections
@@ -22,7 +23,10 @@ async function setupPeerConnection(isInitiator = false) {
 
 	// Set up data channel if initiator
 	if (isInitiator) {
-		const dc = pc.createDataChannel('chat');
+		const dc = pc.createDataChannel('chat', {
+			ordered: true,
+			maxRetransmits: null
+		});
 		setupDataChannel(dc);
 	}
 
@@ -69,16 +73,22 @@ async function sendSignalViaDht(signal, targetPeerId) {
 		throw new Error("Not connected to a DHT service");
 	}
 
-	await fetch(`${dhtService.url}/signal`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			from: dhtPeerId,
-			to: targetPeerId,
-			type: signal.type,
-			payload: JSON.stringify(signal.payload)
-		})
-	});
+	try {
+		await fetch(`${dhtService.url}/signal`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				from: dhtPeerId,
+				to: targetPeerId,
+				type: signal.type,
+				payload: JSON.stringify(signal.payload)
+			})
+		});
+		return true;
+	} catch (error) {
+		console.error('Error sending signal via DHT:', error);
+		throw error;
+	}
 }
 
 /**
@@ -89,6 +99,15 @@ export async function connectViaDht(selectedDht) {
 
 	dhtService = selectedDht;
 	console.log("Connecting to DHT:", selectedDht.url);
+
+	// Clear ICE candidate buffer when connecting to DHT
+	iceCandidateBuffer = [];
+
+	// Expose buffer clearing function globally
+	window.clearIceCandidateBuffer = () => {
+		console.log("Clearing ICE candidate buffer");
+		iceCandidateBuffer = [];
+	};
 
 	try {
 		// Register our peer with the DHT
@@ -104,6 +123,9 @@ export async function connectViaDht(selectedDht) {
 
 		// Set up event listener for ICE candidates
 		window.addEventListener('ice-candidate', handleIceCandidateEvent);
+
+		// Set up reconnection handler
+		setupReconnectionHandler();
 
 		return {
 			status: 'connected_to_dht',
@@ -122,8 +144,60 @@ export async function connectViaDht(selectedDht) {
 function handleIceCandidateEvent(event) {
 	const { candidate, peerId } = event.detail;
 	if (candidate && peerId && dhtService) {
-		sendSignalViaDht({ type: 'ice-candidate', payload: candidate }, peerId);
+		sendSignalViaDht({ type: 'ice-candidate', payload: candidate }, peerId)
+			.catch(err => console.error('Failed to send ICE candidate:', err));
 	}
+}
+
+/**
+ * Setup reconnection handler
+ */
+function setupReconnectionHandler() {
+	if (reconnectionHandler) {
+		window.removeEventListener('request-reconnection', reconnectionHandler);
+	}
+
+	reconnectionHandler = async (event) => {
+		const { remotePeerId, attempt } = event.detail;
+
+		if (!remotePeerId || !dhtService) return;
+
+		console.log(`Reconnection attempt ${attempt} to peer ${remotePeerId}`);
+
+		try {
+			// First check if we're already connected
+			if (isConnected()) {
+				console.log('Already connected, aborting reconnection');
+				return;
+			}
+
+			// Create a new peer connection
+			const pc = await setupPeerConnection(true);
+
+			// Create offer with priority on connecting quickly
+			const offerOptions = {
+				iceRestart: true,
+				offerToReceiveAudio: false,
+				offerToReceiveVideo: false
+			};
+
+			const offer = await pc.createOffer(offerOptions);
+			await pc.setLocalDescription(offer);
+			const completeOffer = await waitForIceGatheringComplete(pc);
+
+			// Send reconnect offer
+			await sendSignalViaDht({
+				type: 'reconnect-offer',
+				payload: completeOffer
+			}, remotePeerId);
+
+			console.log('Reconnect offer sent');
+		} catch (error) {
+			console.error('Error during reconnection attempt:', error);
+		}
+	};
+
+	window.addEventListener('request-reconnection', reconnectionHandler);
 }
 
 /**
@@ -178,8 +252,8 @@ export async function connectToPeerViaDht(peerId, dhtUrl) {
 /**
  * Accept incoming connection
  */
-export async function acceptIncomingConnection(offerPayload, dhtUrl, fromPeerId) {
-	console.log('Accepting connection from:', fromPeerId);
+export async function acceptIncomingConnection(offerPayload, dhtUrl, fromPeerId, isReconnect = false) {
+	console.log(`Accepting ${isReconnect ? 'reconnection' : 'connection'} from:`, fromPeerId);
 
 	try {
 		// Create and initialize peer connection
@@ -211,7 +285,8 @@ export async function acceptIncomingConnection(offerPayload, dhtUrl, fromPeerId)
 		const completeAnswer = await waitForIceGatheringComplete(pc);
 
 		// Send answer via DHT
-		await sendSignalViaDht({ type: 'answer', payload: completeAnswer }, fromPeerId);
+		const answerType = isReconnect ? 'reconnect-answer' : 'answer';
+		await sendSignalViaDht({ type: answerType, payload: completeAnswer }, fromPeerId);
 
 		console.log('Answer sent successfully');
 
@@ -259,6 +334,23 @@ async function handleIncomingSignals(signals, dhtUrl, peerId) {
 		}));
 	}
 
+	// Handle reconnection offer
+	if (signalsByType['reconnect-offer']?.[0]) {
+		const reconnectSignal = signalsByType['reconnect-offer'][0];
+
+		// Process reconnection offer directly
+		try {
+			await acceptIncomingConnection(
+				reconnectSignal.payload,
+				dhtUrl,
+				reconnectSignal.from,
+				true // Mark as reconnection
+			);
+		} catch (error) {
+			console.error('Error handling reconnection offer:', error);
+		}
+	}
+
 	// Handle answer
 	if (signalsByType.answer?.[0] && pc) {
 		try {
@@ -269,6 +361,19 @@ async function handleIncomingSignals(signals, dhtUrl, peerId) {
 			}));
 		} catch (error) {
 			console.error("Error processing answer signal:", error);
+		}
+	}
+
+	// Handle reconnection answer
+	if (signalsByType['reconnect-answer']?.[0] && pc) {
+		try {
+			const reconnectAnswerSignal = signalsByType['reconnect-answer'][0];
+			await handleSessionDescription(reconnectAnswerSignal.payload, false);
+			window.dispatchEvent(new CustomEvent('peer-connection-reestablished', {
+				detail: { peerId: reconnectAnswerSignal.from }
+			}));
+		} catch (error) {
+			console.error("Error processing reconnect answer signal:", error);
 		}
 	}
 
@@ -291,11 +396,31 @@ async function processBufferedIceCandidates() {
 
 	for (const signal of iceCandidateBuffer) {
 		try {
+			// Extract the ufrag from the candidate string to compare with remote description
 			const candidate = JSON.parse(signal.payload);
+
+			// Skip candidate if it's from a different connection session
+			if (pc.remoteDescription && candidate.candidate) {
+				const ufragMatch = candidate.candidate.match(/ufrag\s+([^\s]+)/i);
+				const remoteUfragMatch = pc.remoteDescription.sdp.match(/ice-ufrag:([^\r\n]+)/i);
+
+				if (ufragMatch && remoteUfragMatch && ufragMatch[1] !== remoteUfragMatch[1]) {
+					console.warn(`Skipping ICE candidate with non-matching ufrag: ${ufragMatch[1]}`);
+					continue; // Skip this candidate
+				}
+			}
+
 			await pc.addIceCandidate(new RTCIceCandidate(candidate));
 		} catch (error) {
 			console.error("Error adding ICE candidate:", error);
-			remainingCandidates.push(signal);
+
+			// Only keep the candidate in the buffer if it's a timing issue
+			// If it's an unknown ufrag error, discard it as it's likely from a different session
+			if (!error.message || !error.message.includes("unknown ufrag")) {
+				remainingCandidates.push(signal);
+			} else {
+				console.warn("Discarding ICE candidate with unknown ufrag");
+			}
 		}
 	}
 
@@ -319,6 +444,11 @@ export function disconnectFromDht() {
 	}
 
 	window.removeEventListener('ice-candidate', handleIceCandidateEvent);
+
+	if (reconnectionHandler) {
+		window.removeEventListener('request-reconnection', reconnectionHandler);
+		reconnectionHandler = null;
+	}
 
 	dhtService = null;
 	dhtPeerId = null;

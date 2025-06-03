@@ -12,7 +12,10 @@ export async function createOffer() {
 		if (!pc) throw new Error("Failed to create connection");
 
 		// Create data channel
-		const dc = pc.createDataChannel('chat');
+		const dc = pc.createDataChannel('chat', {
+			ordered: true,
+			maxRetransmits: null
+		});
 		setupDataChannel(dc);
 
 		// Create and set local description (offer)

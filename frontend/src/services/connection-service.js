@@ -6,10 +6,13 @@ import { useUserName } from './user-service';
 
 let peerConnection = null;
 let dataChannel = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 30;
+let lastIceConfig = null;
+let pendingReconnect = false;
 
 /**
  * Fetch ICE servers from the backend
- * @returns {Promise<{iceServers: Array}>} Promise resolving to an object with iceServers array
  */
 function fetchIceServers() {
 	return fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/ice-servers`)
@@ -37,6 +40,7 @@ function fetchIceServers() {
 				console.warn('No ICE servers configured! Connections may fail.');
 			}
 
+			lastIceConfig = { iceServers };
 			return { iceServers };
 		});
 }
@@ -48,6 +52,13 @@ export function createPeerConnection() {
 	return fetchIceServers()
 		.then(({ iceServers }) => {
 			if (peerConnection) closeConnection();
+
+			reconnectAttempts = 0;
+			pendingReconnect = false;
+
+			// Clear any buffered ICE candidates from previous connections
+			if (window.clearIceCandidateBuffer && typeof window.clearIceCandidateBuffer === 'function')
+				window.clearIceCandidateBuffer();
 
 			// Separate STUN and TURN servers
 			const stunServers = iceServers.filter(server =>
@@ -62,7 +73,10 @@ export function createPeerConnection() {
 			// Initial connection with STUN servers only
 			peerConnection = new RTCPeerConnection({
 				iceServers: stunServers,
-				iceTransportPolicy: 'all'
+				iceTransportPolicy: 'all',
+				iceCandidatePoolSize: 10,
+				bundlePolicy: 'max-bundle',
+				rtcpMuxPolicy: 'require'
 			});
 
 			// Track STUN connection progress
@@ -81,6 +95,18 @@ export function createPeerConnection() {
 						stunTimeout = null;
 					}
 					hasFoundDirectRoute = true;
+
+					// Reset reconnect attempts on successful connection
+					reconnectAttempts = 0;
+				}
+				else if (peerConnection.connectionState === 'disconnected' ||
+					peerConnection.connectionState === 'failed') {
+
+					// Attempt reconnection for transient issues
+					if (!pendingReconnect) {
+						pendingReconnect = true;
+						attemptReconnection();
+					}
 				}
 			};
 
@@ -121,15 +147,33 @@ export function createPeerConnection() {
 				if (peerConnection.iceConnectionState === 'failed' && !hasFoundDirectRoute && turnServers.length > 0) {
 					console.log('STUN connection failed, adding TURN servers...');
 
-					// Add TURN servers to the existing configuration
-					turnServers.forEach(server => {
-						try {
-							peerConnection.addIceServer(server);
-							console.log(`Added TURN server: ${server.urls}`);
-						} catch (error) {
-							console.error('Error adding TURN server:', error);
-						}
-					});
+					// Update the entire configuration instead of trying to add individual servers
+					try {
+						// Get current servers and add TURN servers
+						const currentConfig = peerConnection.getConfiguration();
+						const updatedIceServers = [...currentConfig.iceServers, ...turnServers];
+
+						// Set the updated configuration
+						peerConnection.setConfiguration({
+							...currentConfig,
+							iceServers: updatedIceServers
+						});
+
+						console.log(`Added ${turnServers.length} TURN servers to configuration`);
+
+						// Try to restart ICE
+						if (peerConnection.restartIce) peerConnection.restartIce();
+					} catch (error) {
+						console.error('Error updating ICE servers:', error);
+					}
+				}
+
+				if (peerConnection.iceConnectionState === 'disconnected' ||
+					peerConnection.iceConnectionState === 'failed') {
+					if (!pendingReconnect) {
+						pendingReconnect = true;
+						attemptReconnection();
+					}
 				}
 			};
 
@@ -139,22 +183,24 @@ export function createPeerConnection() {
 					&& peerConnection.iceConnectionState !== 'completed') {
 					console.log('STUN connection timeout, adding TURN servers...');
 
-					// Add TURN servers after timeout
-					turnServers.forEach(server => {
-						try {
-							peerConnection.addIceServer(server);
-							console.log(`Added TURN server: ${server.urls}`);
-						} catch (error) {
-							console.error('Error adding TURN server:', error);
+					// Update configuration with TURN servers
+					try {
+						const currentConfig = peerConnection.getConfiguration();
+						const updatedIceServers = [...currentConfig.iceServers, ...turnServers];
 
-							// As fallback, restart ICE with all servers if adding fails
-							if (peerConnection.restartIce) {
-								console.log('Restarting ICE with all servers');
-								peerConnection.setConfiguration({ iceServers: [...stunServers, ...turnServers] });
-								peerConnection.restartIce();
-							}
-						}
-					});
+						peerConnection.setConfiguration({
+							...currentConfig,
+							iceServers: updatedIceServers
+						});
+
+						console.log(`Added ${turnServers.length} TURN servers after timeout`);
+
+						// Try to restart ICE
+						if (peerConnection.restartIce)
+							peerConnection.restartIce();
+					} catch (error) {
+						console.error('Error updating ICE servers configuration:', error);
+					}
 				}
 			}, 5000); // 5 second timeout for STUN-only connection attempt
 
@@ -170,6 +216,66 @@ export function createPeerConnection() {
 			console.error('Error creating peer connection:', error);
 			return null;
 		});
+}
+
+/**
+ * Attempt to recover connection
+ */
+function attemptReconnection() {
+	if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+		console.error('Max reconnection attempts reached, giving up');
+		updateConnectionState('failed');
+		pendingReconnect = false;
+		return;
+	}
+
+	reconnectAttempts++;
+	console.log(`Attempting reconnection (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+
+	// Try to restart ICE if possible
+	if (peerConnection && peerConnection.restartIce) {
+		console.log('Restarting ICE connection...');
+		peerConnection.restartIce();
+
+		// Reset the timer to check if reconnect succeeded
+		setTimeout(() => {
+			if (peerConnection &&
+				(peerConnection.connectionState !== 'connected' &&
+					peerConnection.iceConnectionState !== 'connected')) {
+
+				console.log('ICE restart failed, attempting full reconnect');
+				triggerFullReconnect();
+			} else {
+				pendingReconnect = false;
+			}
+		}, 5000);
+	} else {
+		// If ICE restart not available, do full reconnect
+		triggerFullReconnect();
+	}
+}
+
+/**
+ * Trigger a full reconnection
+ */
+function triggerFullReconnect() {
+	if (!lastIceConfig) {
+		pendingReconnect = false;
+		return;
+	}
+
+	// Dispatch event to request reconnection at the signaling level
+	window.dispatchEvent(new CustomEvent('request-reconnection', {
+		detail: {
+			remotePeerId: findRemotePeerId(),
+			attempt: reconnectAttempts
+		}
+	}));
+
+	// Reset pending state after a delay - either the reconnect succeeds or we'll try again
+	setTimeout(() => {
+		pendingReconnect = false;
+	}, 5000);
 }
 
 /**
@@ -229,7 +335,44 @@ export function setupDataChannel(channel) {
 		updateConnectionState('disconnected');
 	};
 
-	channel.onmessage = handleDataChannelMessage;
+	channel.onerror = (error) => {
+		console.error('Data channel error:', error);
+
+		// Try to reconnect on errors
+		if (!pendingReconnect) {
+			pendingReconnect = true;
+			attemptReconnection();
+		}
+	};
+
+	channel.onmessage = (event) => {
+		try {
+			// Pre-process heartbeats
+			if (typeof event.data === 'string') {
+				const data = JSON.parse(event.data);
+				if (data.type === 'heartbeat') {
+					// Respond to heartbeats with a pong
+					channel.send(JSON.stringify({
+						type: 'heartbeat-ack',
+						timestamp: data.timestamp,
+						responseTime: Date.now()
+					}));
+					return;
+				}
+				else if (data.type === 'heartbeat-ack') {
+					// Calculate round-trip time
+					const rtt = Date.now() - data.timestamp;
+					console.log(`Heartbeat RTT: ${rtt}ms`);
+					return;
+				}
+			}
+
+			// Forward all other messages to message handler
+			handleDataChannelMessage(event);
+		} catch (error) {
+			console.error('Error in data channel message handler:', error);
+		}
+	};
 
 	return channel;
 }
@@ -239,4 +382,11 @@ export function setupDataChannel(channel) {
  */
 export function getPeerConnection() {
 	return peerConnection;
+}
+
+/**
+ * Check if connected
+ */
+export function isConnected() {
+	return dataChannel && dataChannel.readyState === 'open';
 }
