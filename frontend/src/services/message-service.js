@@ -1,4 +1,6 @@
 "use client";
+import { fetchAll } from './api-service';
+
 if (typeof window !== 'undefined' && typeof window.global === 'undefined') {
 	window.global = window;
 }
@@ -9,9 +11,6 @@ let WebTorrent = null;
 if (typeof window !== 'undefined' && typeof global === 'undefined') {
 	window.global = window;
 }
-
-// ToDO: MENU and constants
-const trackerUrl = 'ws://torrent2.nasiadka.pl:32265';
 
 let currentDataChannel = null;
 let torrentClient = null;
@@ -70,34 +69,29 @@ async function loadSelectedTrackers() {
 		// Get selected tracker IDs from localStorage
 		const selectedIds = JSON.parse(localStorage.getItem('selectedTrackers') || '[]');
 
-		// Fetch all available trackers
-		const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/tracker-services`);
-		const allTrackers = await response.json();
+		// Fetch all available trackers using api-service
+		const allTrackers = await fetchAll('/api/tracker-services');
 
-		// Filter to only use selected trackers or all if none selected
+		// Filter to only use selected trackers
 		let trackerUrls = [];
 		if (selectedIds.length > 0) {
 			trackerUrls = allTrackers
 				.filter(tracker => selectedIds.includes(tracker._id))
 				.map(tracker => tracker.url);
-		} else {
-			// Use default tracker as fallback if no trackers are selected
-			trackerUrls = [trackerUrl];
 		}
 
 		console.log('Using WebTorrent trackers:', trackerUrls);
 		return trackerUrls;
 	} catch (error) {
 		console.error('Error loading trackers:', error);
-		return [trackerUrl]; // Return default tracker as fallback
+		return [];
 	}
 }
 
 // Fetch ICE servers configuration
 async function fetchIceServersConfig() {
 	try {
-		const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/ice-servers`);
-		const config = await response.json();
+		const config = await fetchAll('/api/ice-servers');
 
 		// Get selected server IDs from localStorage
 		const selectedIds = JSON.parse(localStorage.getItem('selectedIceServers') || '[]');
@@ -179,6 +173,19 @@ export async function sendFile(file) {
 		console.error('WebTorrent client not available');
 		return false;
 	}
+
+	// Get trackers using the loadSelectedTrackers function
+	const announceList = await loadSelectedTrackers();
+
+	// Check if there are any trackers available
+	if (!announceList || announceList.length === 0) {
+		console.error('No trackers selected. File sharing is disabled.');
+		return {
+			success: false,
+			error: 'No trackers selected. Please select at least one tracker in Settings > Trackers.'
+		};
+	}
+
 	const fileId = generateMessageId();
 	const userName = useUserName();
 
@@ -190,9 +197,6 @@ export async function sendFile(file) {
 		transferred: 0,
 		percent: 0
 	});
-
-	// Get trackers using the new loadSelectedTrackers function
-	const announceList = await loadSelectedTrackers();
 
 	try {
 		// Throttle progress updates to prevent UI overload
@@ -258,26 +262,6 @@ export async function sendFile(file) {
 	return true;
 }
 
-// Function to handle torrent completion
-function handleTorrentComplete(fileId, torrent, meta, onComplete) {
-	try {
-		const torrentFile = torrent.files[0];
-		if (typeof torrentFile.blob === 'function') {
-			torrentFile.blob().then(blob => {
-				const url = URL.createObjectURL(blob);
-				createFileMessage(fileId, url, meta, onComplete);
-			}).catch(err => {
-				console.error('Error with blob method:', err);
-				fallbackToStreamMethod(torrentFile, fileId, meta, onComplete);
-			});
-		} else {
-			fallbackToStreamMethod(torrentFile, fileId, meta, onComplete);
-		}
-	} catch (error) {
-		console.error('Error handling torrent completion:', error);
-	}
-}
-
 // Fallback method using stream
 function fallbackToStreamMethod(torrentFile, fileId, meta) {
 	try {
@@ -290,7 +274,7 @@ function fallbackToStreamMethod(torrentFile, fileId, meta) {
 				try {
 					const blob = new Blob(chunks, { type: meta.fileType || 'application/octet-stream' });
 					const url = URL.createObjectURL(blob);
-					createAndDispatchFileMessage(fileId, url, meta);
+					createFileMessage(fileId, url, meta);
 
 					// Remove progress after a delay
 					setTimeout(() => {
@@ -310,7 +294,7 @@ function fallbackToStreamMethod(torrentFile, fileId, meta) {
 	}
 }
 
-function createAndDispatchFileMessage(fileId, url, meta) {
+function createFileMessage(fileId, url, meta) {
 	const fileMessage = {
 		id: fileId,
 		type: 'file',
@@ -325,26 +309,6 @@ function createAndDispatchFileMessage(fileId, url, meta) {
 	window.dispatchEvent(new CustomEvent('p2p-message', {
 		detail: JSON.stringify(fileMessage)
 	}));
-}
-
-// Helper to create and dispatch the file message
-function createFileMessage(fileId, url, meta, onComplete) {
-	const fileMessage = {
-		id: fileId,
-		type: 'file',
-		fileName: meta.fileName,
-		fileSize: meta.fileSize,
-		fileType: meta.fileType,
-		url: url,
-		sender: meta.sender,
-		timestamp: meta.timestamp
-	};
-
-	window.dispatchEvent(new CustomEvent('p2p-message', {
-		detail: JSON.stringify(fileMessage)
-	}));
-
-	if (typeof onComplete === 'function') onComplete();
 }
 
 function dispatchProgressEvent(eventName, data) {
@@ -422,7 +386,7 @@ export async function handleDataChannelMessage(event) {
 							if (typeof torrentFile.blob === 'function') {
 								torrentFile.blob().then(blob => {
 									const url = URL.createObjectURL(blob);
-									createAndDispatchFileMessage(data.id, url, data);
+									createFileMessage(data.id, url, data);
 
 									// Send acknowledgment to sender
 									if (currentDataChannel && currentDataChannel.readyState === 'open') {

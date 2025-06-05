@@ -3,6 +3,7 @@
 import { updateConnectionState } from './state-service';
 import { setDataChannel, handleDataChannelMessage } from './message-service';
 import { useUserName } from './user-service';
+import { fetchAll } from './api-service';
 
 let peerConnection = null;
 let dataChannel = null;
@@ -15,8 +16,7 @@ let pendingReconnect = false;
  * Fetch ICE servers from the backend
  */
 function fetchIceServers() {
-	return fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/ice-servers`)
-		.then(response => response.json())
+	return fetchAll('/api/ice-servers')
 		.then(config => {
 			console.log('Retrieved ICE servers:', config);
 

@@ -1,11 +1,9 @@
 Implement Encryption?
 Replace console.log with NODE_ENV aware logging function
 Use nginx to make app available by p2pchat hostname in browser?
-handleoffetandcreateanswer -> createanswer?
 connection-state -> ConnectionContext?
 ConnectViaDht and ConnectToPeerViaDht?
 Health check
-Add settings for trackers
 When connecting via DHT, make loading animation untill connected
 Group chats?
-Show default services on top
+Divide message-service to multiple files

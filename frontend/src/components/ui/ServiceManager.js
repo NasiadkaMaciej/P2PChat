@@ -62,11 +62,22 @@ export default function ServiceManager({
 							</div>
 
 							{
-								Array.isArray(services) ? services.map(service => (
-									<React.Fragment key={service.url}>
-										{renderServiceItem(service)}
-									</React.Fragment>
-								)) : <div>No services available</div>
+								Array.isArray(services) ?
+									// Sort services to display default ones first
+									[...services]
+										.sort((a, b) => {
+											// Sort by isDefault (true comes first)
+											if (a.isDefault && !b.isDefault) return -1;
+											if (!a.isDefault && b.isDefault) return 1;
+											// If both are default or both are not default, sort by name
+											return a.name.localeCompare(b.name);
+										})
+										.map(service => (
+											<React.Fragment key={service.url}>
+												{renderServiceItem(service)}
+											</React.Fragment>
+										))
+									: <div>No services available</div>
 							}
 						</>
 					)}

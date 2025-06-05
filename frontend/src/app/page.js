@@ -15,7 +15,6 @@ import TrackerServiceManager from '../components/connection/TrackerServiceManage
 // Error display component
 const ErrorDisplay = ({ error }) => {
 	if (!error) return null;
-
 	return (
 		<motion.div
 			className="mb-6 p-3 bg-red-900/40 border border-red-700 rounded-md text-red-200"
@@ -28,6 +27,12 @@ const ErrorDisplay = ({ error }) => {
 
 const ConnectionSettings = () => {
 	const [activeTab, setActiveTab] = useState('profile');
+
+	const getTabClass = (tabName) =>
+		`py-2 px-4 text-sm font-medium ${activeTab === tabName
+			? 'text-blue-400 border-b-2 border-blue-400'
+			: 'text-gray-400 hover:text-gray-200'
+		}`;
 
 	return (
 		<div className="rounded-lg bg-gray-800/50 border border-gray-700 overflow-hidden mb-6">
@@ -57,78 +62,53 @@ const ConnectionSettings = () => {
 				</div>
 				<div className="flex border-b border-gray-700 mb-4">
 					<button
-						className={`py-2 px-4 text-sm font-medium ${activeTab === 'profile' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+						className={getTabClass('profile')}
 						onClick={() => setActiveTab('profile')}
 					>
 						Username
 					</button>
 					<button
-						className={`py-2 px-4 text-sm font-medium ${activeTab === 'ice' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+						className={getTabClass('ice')}
 						onClick={() => setActiveTab('ice')}
 					>
 						ICE Servers
 					</button>
 					<button
-						className={`py-2 px-4 text-sm font-medium ${activeTab === 'trackers' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+						className={getTabClass('trackers')}
 						onClick={() => setActiveTab('trackers')}
 					>
 						Trackers
 					</button>
 				</div>
 
-				{activeTab === 'profile' && (
-					<UsernameInput />
-				)}
-
-				{activeTab === 'ice' && (
-					<IceServerManager />
-				)}
-
-				{activeTab === 'trackers' && (
-					<TrackerServiceManager />
-				)}
+				{activeTab === 'profile' && <UsernameInput />}
+				{activeTab === 'ice' && <IceServerManager />}
+				{activeTab === 'trackers' && <TrackerServiceManager />}
 			</div>
 		</div>
 	);
 };
 
-// Main page content
 export default function Home() {
 	const { connectionState, showChat, error, connectionMethod } = useConnection();
 	const isConnected = connectionState === 'connected' && showChat;
 
 	return (
 		<div className="min-h-screen bg-gray-900 text-gray-200 p-6">
-			<div className="max-w-6xl mx-auto flex flex-col space-y-6" style={{ minHeight: 'calc(100vh - 3rem)' }}>
-				{/* Header - Always visible */}
-				<div>
-					<div className="flex justify-between items-center">
-						<h1 className="text-3xl font-bold text-white">P2P Chat</h1>
-					</div>
-				</div>
+			<div className="max-w-6xl mx-auto flex flex-col space-y-6 min-h-[calc(100vh-3rem)]">
+				<h1 className="text-3xl font-bold text-white">P2P Chat</h1>
 
-				{/* Error Display */}
 				{error && <ErrorDisplay error={error} />}
-
-				{/* Connection Settings */}
 				{!isConnected && <ConnectionSettings />}
 
-				{/* Rest of the existing page content */}
 				<div className="flex-1 flex flex-col">
-					{/* Connection Method Selection (when not chatting) */}
 					{!isConnected && <ConnectionMethodSelect />}
 
-					{/* Connection Components based on Method */}
-					{!isConnected && (
-						<>
-							{connectionMethod === 'offer-answer' && <OfferAnswerExchange />}
-							{connectionMethod === 'dht' && <DhtServiceManager />}
-						</>
-					)}
+					{!isConnected && connectionMethod === 'offer-answer' && <OfferAnswerExchange />}
+					{!isConnected && connectionMethod === 'dht' && <DhtServiceManager />}
 
-					{/* Chat Area */}
 					{isConnected && (
-						<div className="flex-1" style={{ minHeight: '400px' }}>
+						<div className="flex-1 min-h-[400px]">
 							<Chat />
 						</div>
 					)}
