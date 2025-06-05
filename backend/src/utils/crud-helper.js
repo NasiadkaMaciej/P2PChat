@@ -6,6 +6,7 @@ const getResourceName = (Model) => {
 	// Simple hardcoded mapping based on model name
 	if (Model.modelName === 'IceServer') return 'ICE server';
 	else if (Model.modelName === 'DhtService') return 'DHT service';
+	else if (Model.modelName === 'TrackerService') return 'Tracker service';
 	// Fallback for any other models
 	return 'resource';
 };

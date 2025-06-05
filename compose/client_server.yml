@@ -38,7 +38,7 @@ services:
     env_file:
       - .env
     command: >
-      sh -c "npm start & sleep 10 && node src/scripts/init-dht.js && node src/scripts/init-ice.js && wait"
+      sh -c "npm start & sleep 10 && node src/scripts/init-dht.js && node src/scripts/init-ice.js && node src/scripts/init-tracker.js && wait"
 
 
   database:

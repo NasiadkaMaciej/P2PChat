@@ -1,9 +1,11 @@
 const express = require('express');
 const cors = require('cors');
 const { getIceServers } = require('./services/stun-turn-service');
+const { getTrackerServices } = require('./services/tracker-service');
 
 const iceServerRoutes = require('./routes/ice-server-routes');
 const dhtServiceRoutes = require('./routes/dht-service-routes');
+const trackerServiceRoutes = require('./routes/tracker-service-routes');
 
 // Initialize Express app
 const app = express();
@@ -33,8 +35,23 @@ app.get('/api/ice-servers', async (req, res) => {
 	}
 });
 
+// Get tracker services configuration
+app.get('/api/trackers', async (req, res) => {
+	try {
+		const trackers = await getTrackerServices();
+		res.json(trackers);
+	} catch (error) {
+		console.error('Error getting tracker services:', error);
+		res.status(500).json({
+			error: 'Error getting tracker services',
+			trackers: []
+		});
+	}
+});
+
 // Mount routes
 app.use('/api/ice-servers', iceServerRoutes);
 app.use('/api/dht-services', dhtServiceRoutes);
+app.use('/api/tracker-services', trackerServiceRoutes);
 
 module.exports = app;
