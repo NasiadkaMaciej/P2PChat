@@ -50,6 +50,14 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+  tracker:
+    image: quoorex/bittorrent-tracker
+    container_name: webtorrent-tracker
+    restart: unless-stopped
+    ports:
+      - "TORRENT_PORT:8000"
+    networks:
+      - p2pnet
 
 networks:
   p2pnet:

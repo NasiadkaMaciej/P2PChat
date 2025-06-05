@@ -301,6 +301,13 @@ export function closeConnection() {
 		peerConnection = null;
 	}
 
+	// Import and use the cleanup function
+	import('./message-service').then(messageService => {
+		messageService.cleanupTorrents();
+	}).catch(err => {
+		console.error('Error cleaning up torrents:', err);
+	});
+
 	updateConnectionState('disconnected');
 }
 

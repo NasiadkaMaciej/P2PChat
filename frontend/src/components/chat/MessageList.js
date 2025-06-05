@@ -17,15 +17,37 @@ function MessageList({ messages = [] }) {
 	const currentUser = useUserName();
 	const [progress, setProgress] = useState({});
 
+	// Keep track of displayed file IDs to prevent duplicate displays
+	const [displayedFileIds, setDisplayedFileIds] = useState(new Set());
+
+	// Update displayed file IDs when messages change
+	useEffect(() => {
+		const newDisplayedIds = new Set(displayedFileIds);
+
+		messages.forEach(msg => {
+			const data = typeof msg === 'string' ? JSON.parse(msg) : msg;
+			if (data.type === 'file') newDisplayedIds.add(data.id);
+		});
+
+		setDisplayedFileIds(newDisplayedIds);
+	}, [messages]);
+
 	// Handle file progress events
 	useEffect(() => {
 		function updateProgress(e, type) {
+			// Skip progress updates for files that already have a message displayed
+			if (displayedFileIds.has(e.detail.id)) return;
+
 			setProgress(p => {
 				const prev = p[e.detail.id] || {};
 				const now = Date.now();
 				const transferred = e.detail.transferred || 0;
 				const fileSize = e.detail.fileSize || prev.fileSize || 1;
 				const percent = Math.min(100, Math.round((transferred / fileSize) * 100));
+
+				// If complete flag is set, show 100% for a moment before removing
+				if (e.detail.complete)
+					setTimeout(() => { removeProgress({ detail: { id: e.detail.id } }); }, 500);
 
 				return {
 					...p,
@@ -39,7 +61,8 @@ function MessageList({ messages = [] }) {
 						startTime: prev.startTime || now,
 						prevTime: prev.lastTime || now,
 						lastTransferred: prev.transferred || 0,
-						lastTime: now
+						lastTime: now,
+						complete: e.detail.complete || false
 					}
 				};
 			});
@@ -68,12 +91,12 @@ function MessageList({ messages = [] }) {
 			window.removeEventListener('file-send-complete', handleComplete);
 			window.removeEventListener('file-receive-complete', handleComplete);
 		};
-	}, []);
+	}, [displayedFileIds]);
 
 	// Auto-scroll to bottom on new messages
 	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-	}, [messages.length]);
+	}, [messages.length, Object.keys(progress).length]);
 
 	return (
 		<motion.div
@@ -113,22 +136,24 @@ function MessageList({ messages = [] }) {
 			</AnimatePresence>
 
 			{/* Show progress for files in progress but not yet in messages */}
-			{Object.entries(progress).map(([id, prog]) => (
-				<div key={id} className="flex flex-col">
-					<span className="text-xs text-gray-400">
-						{prog.type === 'send' ? 'Sending' : 'Receiving'}: <b>{prog.fileName || '...'}</b> ({formatSize(prog.fileSize || 0)})
-					</span>
-					<div className="w-full bg-gray-700 rounded mt-1 h-2">
-						<div
-							className={`h-2 rounded ${prog.type === 'send' ? 'bg-blue-500' : 'bg-green-500'}`}
-							style={{ width: `${prog.percent || 0}%` }}
-						/>
+			{Object.entries(progress)
+				.filter(([id]) => !displayedFileIds.has(id))
+				.map(([id, prog]) => (
+					<div key={id} className="flex flex-col mb-2">
+						<span className="text-xs text-gray-400">
+							{prog.type === 'send' ? 'Sending' : 'Receiving'}: <b>{prog.fileName || '...'}</b> ({formatSize(prog.fileSize || 0)})
+						</span>
+						<div className="w-full bg-gray-700 rounded mt-1 h-2">
+							<div
+								className={`h-2 rounded ${prog.type === 'send' ? 'bg-blue-500' : 'bg-green-500'} ${prog.complete ? 'opacity-50' : ''}`}
+								style={{ width: `${prog.percent || 0}%` }}
+							/>
+						</div>
+						{prog.complete && <span className="text-xs text-green-500 mt-1">Complete!</span>}
 					</div>
-				</div>
-			))}
+				))}
 			<div ref={messagesEndRef} />
 		</motion.div>
-
 	);
 }
 

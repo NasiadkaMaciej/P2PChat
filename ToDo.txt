@@ -1,9 +1,11 @@
 Implement Encryption?
-IMPORTANT! Implement file sending functionality
 Replace console.log with NODE_ENV aware logging function
 Use nginx to make app available by p2pchat hostname in browser?
 handleoffetandcreateanswer -> createanswer?
 connection-state -> ConnectionContext?
-not needed checks or typeof window?
 ConnectViaDht and ConnectToPeerViaDht?
 Health check
+Add settings for trackers
+When connecting via DHT, make loading animation untill connected
+Group chats?
+
