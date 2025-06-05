@@ -3,6 +3,7 @@ import { useServiceManagement } from '@/hooks/useServiceManagement';
 import ServiceForm from './ServiceForm';
 import ServiceManager from './ServiceManager';
 import ServiceItem from './ServiceItem';
+import HelpPopup from './HelpPopup';
 
 export default function GenericServiceManager({
 	title,
@@ -21,6 +22,7 @@ export default function GenericServiceManager({
 	connecting,
 	connectedId,
 	isSelected,
+	helpContent,
 }) {
 	const {
 		services,
@@ -81,6 +83,7 @@ export default function GenericServiceManager({
 		<>
 			<ServiceManager
 				title={title}
+				helpContent={helpContent}
 				services={services}
 				loading={loading}
 				showAddForm={showForm}

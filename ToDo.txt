@@ -8,4 +8,4 @@ Health check
 Add settings for trackers
 When connecting via DHT, make loading animation untill connected
 Group chats?
-
+Show default services on top

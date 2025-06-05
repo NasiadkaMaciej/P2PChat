@@ -3,12 +3,14 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import Button from './Button';
 import { fadeIn } from '@/utils/animation-utils';
+import HelpPopup from './HelpPopup';
 
 /**
  * Reusable component for managing services (ICE servers or DHT services)
  */
 export default function ServiceManager({
 	title,
+	helpContent,
 	services,
 	loading,
 	showAddForm,
@@ -23,7 +25,10 @@ export default function ServiceManager({
 			{...fadeIn}
 		>
 			<div className="flex justify-between items-center mb-4">
-				<h3 className="text-lg font-medium text-white">{title}</h3>
+				<div className="flex items-center">
+					<h3 className="text-lg font-medium text-white">{title}</h3>
+					{helpContent && <HelpPopup title={title}>{helpContent}</HelpPopup>}
+				</div>
 				{!showAddForm ? (
 					<Button onClick={onAdd} variant="primary" size="sm">
 						Add {title.slice(0, -1)} {/* Remove the 's' from title */}
@@ -39,7 +44,6 @@ export default function ServiceManager({
 				<>
 					{/* Custom form fields */}
 					{renderForm && renderForm()}
-
 				</>
 			)}
 
@@ -67,8 +71,7 @@ export default function ServiceManager({
 						</>
 					)}
 				</div>
-			)
-			}
-		</motion.div >
+			)}
+		</motion.div>
 	);
 }

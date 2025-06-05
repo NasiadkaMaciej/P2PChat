@@ -48,10 +48,21 @@ function DhtServiceManager() {
 	};
 
 	return (
-		<>
-			<div className="flex items-center mb-3">
-				<h3 className="text-lg font-medium text-white">DHT Services</h3>
-				<HelpPopup title="DHT Services">
+		<GenericServiceManager
+			title="DHT Services"
+			serviceTypeLabel="DHT Service"
+			initialFormState={initialFormState}
+			fetchServices={fetchDhtServices}
+			addService={(data) => addDhtService(data.name, data.url)}
+			editService={(id, data) => editDhtService(id, data.name, data.url)}
+			deleteService={deleteDhtService}
+			onConnect={handleConnect}
+			formFields={formFields}
+			connected={connected}
+			connecting={connecting}
+			connectedId={connected}
+			helpContent={
+				<>
 					<h4 className="font-medium mb-2">What is a DHT Service?</h4>
 					<p className="mb-3">
 						A DHT (Distributed Hash Table) service helps peers discover each other and exchange
@@ -71,43 +82,28 @@ function DhtServiceManager() {
 						transmitted directly between peers. For maximum privacy, you can host your own DHT
 						service using the simple Node.js implementation described in the documentation.
 					</p>
-				</HelpPopup>
-			</div>
-
-			<GenericServiceManager
-				title="DHT Services"
-				serviceTypeLabel="DHT Service"
-				initialFormState={initialFormState}
-				fetchServices={fetchDhtServices}
-				addService={(data) => addDhtService(data.name, data.url)}
-				editService={(id, data) => editDhtService(id, data.name, data.url)}
-				deleteService={deleteDhtService}
-				onConnect={handleConnect}
-				formFields={formFields}
-				connected={connected}
-				connecting={connecting}
-				connectedId={connected}
-				additionalContent={connected && connectedService && (
-					<div className="mt-4">
-						<div className="flex items-center mb-2">
-							<h4 className="text-sm font-medium text-white">Peer List</h4>
-							<HelpPopup title="Peer List">
-								<p className="mb-3">
-									The peer list shows all other users currently connected to the same DHT service.
-									You can connect to any of these peers directly by clicking the "Connect" button.
-								</p>
-								<p>
-									When someone wants to connect to you, you'll receive a connection request that you
-									can accept or reject. All chat data is transmitted directly between peers without
-									going through the DHT service.
-								</p>
-							</HelpPopup>
-						</div>
-						<PeerList dhtService={connectedService} />
+				</>
+			}
+			additionalContent={connected && connectedService && (
+				<div className="mt-4">
+					<div className="flex items-center mb-2">
+						<h4 className="text-sm font-medium text-white">Peer List</h4>
+						<HelpPopup title="Peer List">
+							<p className="mb-3">
+								The peer list shows all other users currently connected to the same DHT service.
+								You can connect to any of these peers directly by clicking the "Connect" button.
+							</p>
+							<p>
+								When someone wants to connect to you, you'll receive a connection request that you
+								can accept or reject. All chat data is transmitted directly between peers without
+								going through the DHT service.
+							</p>
+						</HelpPopup>
 					</div>
-				)}
-			/>
-		</>
+					<PeerList dhtService={connectedService} />
+				</div>
+			)}
+		/>
 	);
 }
 

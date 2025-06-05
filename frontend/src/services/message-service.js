@@ -34,9 +34,12 @@ async function getWebTorrentClient() {
 			// Fetch ICE servers configuration
 			await fetchIceServersConfig();
 
+			// Get trackers from localStorage using the updated approach
+			const trackers = await loadSelectedTrackers();
+
 			torrentClient = new WebTorrent({
 				tracker: {
-					announce: [trackerUrl],
+					announce: trackers,
 					rtcConfig: {
 						iceServers: iceServersConfig || [],
 						sdpSemantics: 'unified-plan'
@@ -60,6 +63,34 @@ async function getWebTorrentClient() {
 		}
 	}
 	return torrentClient;
+}
+
+async function loadSelectedTrackers() {
+	try {
+		// Get selected tracker IDs from localStorage
+		const selectedIds = JSON.parse(localStorage.getItem('selectedTrackers') || '[]');
+
+		// Fetch all available trackers
+		const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/tracker-services`);
+		const allTrackers = await response.json();
+
+		// Filter to only use selected trackers or all if none selected
+		let trackerUrls = [];
+		if (selectedIds.length > 0) {
+			trackerUrls = allTrackers
+				.filter(tracker => selectedIds.includes(tracker._id))
+				.map(tracker => tracker.url);
+		} else {
+			// Use default tracker as fallback if no trackers are selected
+			trackerUrls = [trackerUrl];
+		}
+
+		console.log('Using WebTorrent trackers:', trackerUrls);
+		return trackerUrls;
+	} catch (error) {
+		console.error('Error loading trackers:', error);
+		return [trackerUrl]; // Return default tracker as fallback
+	}
 }
 
 // Fetch ICE servers configuration
@@ -160,13 +191,14 @@ export async function sendFile(file) {
 		percent: 0
 	});
 
-	// We'll postpone creating the file message for the sender until confirmation
+	// Get trackers using the new loadSelectedTrackers function
+	const announceList = await loadSelectedTrackers();
 
 	try {
 		// Throttle progress updates to prevent UI overload
 		let lastProgressUpdate = 0;
 
-		client.seed(file, { announce: [trackerUrl], store: WebTorrent.MEMORY_STORE }, torrent => {
+		client.seed(file, { announce: announceList, store: WebTorrent.MEMORY_STORE }, torrent => {
 			console.log('Created torrent:', torrent.infoHash);
 
 			activeTorrents[fileId] = torrent;
@@ -341,11 +373,14 @@ export async function handleDataChannelMessage(event) {
 					percent: 0
 				});
 
+				// Get trackers using the new loadSelectedTrackers function  
+				const announceList = await loadSelectedTrackers();
+
 				// Throttle progress updates
 				let lastProgressUpdate = 0;
 
 				client.add(data.magnetURI, {
-					announce: [trackerUrl],
+					announce: announceList,
 					store: WebTorrent.MEMORY_STORE
 				}, torrent => {
 					activeTorrents[data.id] = torrent;

@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
 import GenericServiceManager from '../ui/GenericServiceManager';
 import { fetchAll, addRecord, editRecord, deleteRecord } from '@/services/api-service';
-import HelpPopup from '../ui/HelpPopup';
 
 // Fetch all available ICE servers
 const fetchIceServers = async () => {
@@ -155,10 +154,24 @@ function IceServerManager() {
 	};
 
 	return (
-		<>
-			<div className="flex items-center mb-3">
-				<h3 className="text-lg font-medium text-white">ICE Servers</h3>
-				<HelpPopup title="ICE Servers">
+		<GenericServiceManager
+			title="ICE Servers"
+			serviceTypeLabel="ICE Server"
+			initialFormState={initialFormState}
+			fetchServices={fetchIceServers}
+			addService={(data) => addIceServer(
+				data.name, data.type, data.url, data.username, data.credential
+			)}
+			editService={(id, data) => editIceServer(
+				id, data.name, data.type, data.url, data.username, data.credential
+			)}
+			deleteService={deleteIceServer}
+			onSelect={handleSelectServer}
+			showTypeLabel={true}
+			formFields={formFields}
+			isSelected={isServerSelected}
+			helpContent={
+				<>
 					<h4 className="font-medium mb-2">What are ICE Servers?</h4>
 					<p className="mb-3">
 						ICE (Interactive Connectivity Establishment) servers help WebRTC connections establish
@@ -191,26 +204,9 @@ function IceServerManager() {
 						STUN servers reveal your IP address to peers. TURN servers can provide IP anonymization,
 						but the TURN provider can see your traffic. Use trusted servers for sensitive communications.
 					</p>
-				</HelpPopup>
-			</div>
-			<GenericServiceManager
-				title="ICE Servers"
-				serviceTypeLabel="ICE Server"
-				initialFormState={initialFormState}
-				fetchServices={fetchIceServers}
-				addService={(data) => addIceServer(
-					data.name, data.type, data.url, data.username, data.credential
-				)}
-				editService={(id, data) => editIceServer(
-					id, data.name, data.type, data.url, data.username, data.credential
-				)}
-				deleteService={deleteIceServer}
-				onSelect={handleSelectServer}
-				showTypeLabel={true}
-				formFields={formFields}
-				isSelected={isServerSelected}
-			/>
-		</>
+				</>
+			}
+		/>
 	);
 }
 

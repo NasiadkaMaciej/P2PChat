@@ -10,6 +10,7 @@ import { slideIn } from '../utils/animation-utils';
 import IceServerManager from '../components/connection/IceServerManager';
 import UsernameInput from '@/components/chat/UsernameInput';
 import HelpPopup from '../components/ui/HelpPopup';
+import TrackerServiceManager from '../components/connection/TrackerServiceManager';
 
 // Error display component
 const ErrorDisplay = ({ error }) => {
@@ -43,13 +44,17 @@ const ConnectionSettings = () => {
 							Your username will be visible to peers you connect with. It helps identify you in the chat.
 						</p>
 						<h4 className="font-medium mb-2">ICE Servers</h4>
-						<p>
+						<p className="mb-3">
 							ICE servers help establish direct connections between peers, especially when
 							they are behind firewalls or NATs. You can use the default servers or add your own.
 						</p>
+						<h4 className="font-medium mb-2">Trackers</h4>
+						<p>
+							WebTorrent trackers help coordinate file transfers between peers.
+							You can use the default trackers or add your own.
+						</p>
 					</HelpPopup>
 				</div>
-
 				<div className="flex border-b border-gray-700 mb-4">
 					<button
 						className={`py-2 px-4 text-sm font-medium ${activeTab === 'profile' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
@@ -63,18 +68,24 @@ const ConnectionSettings = () => {
 					>
 						ICE Servers
 					</button>
+					<button
+						className={`py-2 px-4 text-sm font-medium ${activeTab === 'trackers' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+						onClick={() => setActiveTab('trackers')}
+					>
+						Trackers
+					</button>
 				</div>
 
 				{activeTab === 'profile' && (
-					<div className="py-2">
-						<UsernameInput />
-					</div>
+					<UsernameInput />
 				)}
 
 				{activeTab === 'ice' && (
-					<div className="py-2">
-						<IceServerManager />
-					</div>
+					<IceServerManager />
+				)}
+
+				{activeTab === 'trackers' && (
+					<TrackerServiceManager />
 				)}
 			</div>
 		</div>
