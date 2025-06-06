@@ -3,7 +3,7 @@
 import { updateConnectionState } from './state-service';
 import { setDataChannel, handleDataChannelMessage } from './message-service';
 import { useUserName } from './user-service';
-import { fetchAll } from './api-service';
+import { fetchSelected } from './api-service';
 
 let peerConnection = null;
 let dataChannel = null;
@@ -16,28 +16,19 @@ let pendingReconnect = false;
  * Fetch ICE servers from the backend
  */
 function fetchIceServers() {
-	return fetchAll('/api/ice-servers')
-		.then(config => {
-			console.log('Retrieved ICE servers:', config);
-
-			// Get selected server IDs from localStorage
-			const selectedIds = JSON.parse(localStorage.getItem('selectedIceServers') || '[]');
-
-			// Filter to only use selected servers or all if none selected
-			let servers = config.iceServers;
-			if (selectedIds.length > 0) {
-				servers = servers.filter(server => selectedIds.includes(server._id));
-			}
+	return fetchSelected('/api/ice-servers')
+		.then(selectedServers => {
+			console.log('Retrieved selected ICE servers:', selectedServers);
 
 			// Format for RTCPeerConnection
-			const iceServers = servers.map(server => ({
-				urls: server.urls,
+			const iceServers = selectedServers.map(server => ({
+				urls: server.url,
 				username: server.username,
 				credential: server.credential
 			}));
 
 			if (iceServers.length === 0) {
-				console.warn('No ICE servers configured! Connections may fail.');
+				console.warn('No ICE servers selected! Connections may fail.');
 			}
 
 			lastIceConfig = { iceServers };

@@ -12,6 +12,37 @@ export const fetchAll = async (endpoint) => {
 	}
 };
 
+// Fetch selected records of a specific type
+export const fetchSelected = async (endpoint) => {
+	try {
+		const response = await fetch(`${LOCAL_BACKEND_URL}${endpoint}/selected`);
+		if (!response.ok) throw new Error(`Failed to fetch selected from ${endpoint}`);
+		return await response.json();
+	} catch (error) {
+		console.error(`Error fetching selected from ${endpoint}:`, error);
+		throw error;
+	}
+};
+
+// Toggle selection status of a record
+export const toggleSelection = async (endpoint, id) => {
+	try {
+		const response = await fetch(`${LOCAL_BACKEND_URL}${endpoint}/${id}/toggle-selection`, {
+			method: 'PUT',
+		});
+
+		if (!response.ok) {
+			const error = await response.json();
+			throw new Error(error.error || `Failed to toggle selection at ${endpoint}/${id}`);
+		}
+
+		return await response.json();
+	} catch (error) {
+		console.error(`Error toggling selection at ${endpoint}/${id}:`, error);
+		throw error;
+	}
+};
+
 // Generic function to add a record
 export const addRecord = async (endpoint, data) => {
 	try {

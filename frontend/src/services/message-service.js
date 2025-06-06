@@ -1,5 +1,5 @@
 "use client";
-import { fetchAll } from './api-service';
+import { fetchSelected } from './api-service';
 
 if (typeof window !== 'undefined' && typeof window.global === 'undefined') {
 	window.global = window;
@@ -66,19 +66,11 @@ async function getWebTorrentClient() {
 
 async function loadSelectedTrackers() {
 	try {
-		// Get selected tracker IDs from localStorage
-		const selectedIds = JSON.parse(localStorage.getItem('selectedTrackers') || '[]');
+		// Fetch selected trackers directly from the API
+		const selectedTrackers = await fetchSelected('/api/tracker-services');
 
-		// Fetch all available trackers using api-service
-		const allTrackers = await fetchAll('/api/tracker-services');
-
-		// Filter to only use selected trackers
-		let trackerUrls = [];
-		if (selectedIds.length > 0) {
-			trackerUrls = allTrackers
-				.filter(tracker => selectedIds.includes(tracker._id))
-				.map(tracker => tracker.url);
-		}
+		// Extract URLs from the selected trackers
+		const trackerUrls = selectedTrackers.map(tracker => tracker.url);
 
 		console.log('Using WebTorrent trackers:', trackerUrls);
 		return trackerUrls;
@@ -91,20 +83,12 @@ async function loadSelectedTrackers() {
 // Fetch ICE servers configuration
 async function fetchIceServersConfig() {
 	try {
-		const config = await fetchAll('/api/ice-servers');
-
-		// Get selected server IDs from localStorage
-		const selectedIds = JSON.parse(localStorage.getItem('selectedIceServers') || '[]');
-
-		// Filter to only use selected servers or all if none selected
-		let servers = config.iceServers;
-		if (selectedIds.length > 0) {
-			servers = servers.filter(server => selectedIds.includes(server._id));
-		}
+		// Fetch selected ICE servers directly from the API
+		const selectedServers = await fetchSelected('/api/ice-servers');
 
 		// Format for WebRTC usage
-		iceServersConfig = servers.map(server => ({
-			urls: server.urls,
+		iceServersConfig = selectedServers.map(server => ({
+			urls: server.url,
 			username: server.username,
 			credential: server.credential
 		}));

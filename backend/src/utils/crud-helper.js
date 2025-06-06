@@ -114,11 +114,49 @@ const updateResource = (Model, validateFn, existsCheckFn, beforeSaveFn) => async
 	}
 };
 
+// Get only selected resources
+const getSelectedResources = (Model) => async (req, res) => {
+	const resourceName = getResourceName(Model);
+	try {
+		const items = await Model.find({ selected: true });
+		res.json(items);
+	} catch (error) {
+		const errorMessage = `Failed to retrieve selected ${resourceName} list`;
+		console.error(`Error: ${errorMessage}`, error);
+		res.status(500).json({ error: errorMessage });
+	}
+};
+
+// Toggle selection status of a resource
+const toggleResourceSelection = (Model) => async (req, res) => {
+	const resourceName = getResourceName(Model);
+	const { id } = req.params;
+
+	try {
+		const resource = await Model.findById(id);
+		if (!resource) {
+			return res.status(404).json({ error: `${resourceName} not found` });
+		}
+
+		// Toggle the selected status
+		resource.selected = !resource.selected;
+		await resource.save();
+
+		res.json(resource);
+	} catch (error) {
+		const errorMessage = `Failed to toggle selection for ${resourceName}`;
+		console.error(`Error: ${errorMessage}`, error);
+		res.status(500).json({ error: errorMessage });
+	}
+};
+
 module.exports = {
 	resourceExistsByUrlCheck,
 	getAllResources,
 	getResourceById,
 	deleteResource,
 	createResource,
-	updateResource
+	updateResource,
+	getSelectedResources,
+	toggleResourceSelection
 };

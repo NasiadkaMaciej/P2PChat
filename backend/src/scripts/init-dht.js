@@ -37,14 +37,14 @@ async function initializeDefaultDht() {
 				console.log(`Creating DHT service: ${dhtUrl}`);
 				await DhtService.create({
 					name: name,
-					url: dhtUrl
+					url: dhtUrl,
+					selected: true
 				});
 				console.log(`Created DHT service with URL: ${dhtUrl}`);
 			}
 			console.log('Added all default DHT services successfully!');
-		} else {
+		} else
 			console.log(`Found ${count} existing DHT services. Skipping default initialization.`);
-		}
 
 		await mongoose.disconnect();
 		console.log('Disconnected from MongoDB');

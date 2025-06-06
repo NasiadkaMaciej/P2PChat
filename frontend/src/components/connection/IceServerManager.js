@@ -1,26 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useAsyncAction } from '@/hooks/useAsyncAction';
+import React from 'react';
 import GenericServiceManager from '../ui/GenericServiceManager';
-import { fetchAll, addRecord, editRecord, deleteRecord } from '@/services/api-service';
+import { fetchAll, addRecord, editRecord, deleteRecord, toggleSelection } from '@/services/api-service';
 
 // Fetch all available ICE servers
 const fetchIceServers = async () => {
 	try {
-		const response = await fetchAll('/api/ice-servers');
-		if (response && response.iceServers) {
-			return response.iceServers.map((server) => ({
-				_id: server._id,
-				name: server.name || server.url,
-				type: server.type,
-				url: server.urls,
-				username: server.username || '',
-				credential: server.credential || '',
-				isDefault: server.isDefault || false
-			}));
-		}
-		return [];
+		const servers = await fetchAll('/api/ice-servers');
+		return servers;
 	} catch (error) {
 		console.error('Error fetching ICE servers:', error);
 		return [];
@@ -55,41 +43,21 @@ const deleteIceServer = async (id) => {
 };
 
 function IceServerManager() {
-	const { execute } = useAsyncAction();
-	const [selectedServers, setSelectedServers] = useState([]);
+	const handleSelectServer = async (service, loadServices) => {
+		try {
+			await toggleSelection('/api/ice-servers', service._id);
 
-	// Load selected servers from localStorage or select defaults
-	useEffect(() => {
-		const saved = localStorage.getItem('selectedIceServers');
-		if (saved) {
-			setSelectedServers(JSON.parse(saved));
-		} else {
-			// If no selection exists, fetch and select default servers
-			const selectDefaults = async () => {
-				try {
-					const response = await fetchIceServers();
-					if (response.success && response.data) {
-						const defaultServerIds = response.data
-							.filter(server => server.isDefault)
-							.map(server => server._id);
+			await loadServices();
 
-						if (defaultServerIds.length > 0) {
-							saveSelectedServers(defaultServerIds);
-						}
-					}
-				} catch (error) {
-					console.error('Error selecting default servers:', error);
-				}
-			};
-
-			selectDefaults();
+			return true;
+		} catch (error) {
+			console.error('Error handling service selection:', error);
+			return false;
 		}
-	}, []);
+	};
 
-	// Save selected servers to localStorage
-	const saveSelectedServers = (servers) => {
-		localStorage.setItem('selectedIceServers', JSON.stringify(servers));
-		setSelectedServers(servers);
+	const isServerSelected = (server) => {
+		return server.selected;
 	};
 
 	const initialFormState = {
@@ -132,26 +100,6 @@ function IceServerManager() {
 			condition: (data) => data.type === 'turn'
 		}
 	];
-
-	const handleSelectServer = async (server) => {
-		try {
-			const isSelected = selectedServers.includes(server._id);
-			let newSelection;
-
-			if (isSelected) newSelection = selectedServers.filter(id => id !== server._id);
-			else newSelection = [...selectedServers, server._id];
-
-			saveSelectedServers(newSelection);
-			return true; // Signal success to trigger reload
-		} catch (error) {
-			console.error('Error handling server selection:', error);
-			return false;
-		}
-	};
-
-	const isServerSelected = (server) => {
-		return selectedServers.includes(server._id);
-	};
 
 	return (
 		<GenericServiceManager

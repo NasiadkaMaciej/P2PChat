@@ -5,13 +5,21 @@ const {
 	resourceExistsByUrlCheck,
 	getAllResources,
 	getResourceById,
+	deleteResource,
 	createResource,
 	updateResource,
-	deleteResource
+	getSelectedResources,
+	toggleResourceSelection
 } = require('../utils/crud-helper');
 
 // Get all tracker services
 router.get('/', getAllResources(TrackerService));
+
+// Get selected tracker services
+router.get('/selected', getSelectedResources(TrackerService));
+
+// Toggle selection status
+router.put('/:id/toggle-selection', toggleResourceSelection(TrackerService));
 
 // Get tracker service by ID
 router.get('/:id', getResourceById(TrackerService));

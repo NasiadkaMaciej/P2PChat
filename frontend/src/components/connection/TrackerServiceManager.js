@@ -2,19 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAsyncAction } from '@/hooks/useAsyncAction';
-import { fetchAll, addRecord, editRecord, deleteRecord } from '../../services/api-service';
+import { fetchAll, addRecord, editRecord, deleteRecord, toggleSelection } from '../../services/api-service';
 import GenericServiceManager from '../ui/GenericServiceManager';
 
 // Fetch all available tracker services
 const fetchTrackerServices = async () => {
 	try {
 		const response = await fetchAll('/api/tracker-services');
-		return response.map(tracker => ({
-			_id: tracker._id,
-			name: tracker.name || tracker.url,
-			url: tracker.url,
-			isDefault: tracker.isDefault || false
-		}));
+		return response
 	} catch (error) {
 		console.error('Failed to fetch tracker services:', error);
 		return [];
@@ -37,51 +32,21 @@ const deleteTrackerService = async (id) => {
 };
 
 function TrackerServiceManager() {
-	const { execute } = useAsyncAction();
-	const [selectedTrackers, setSelectedTrackers] = useState([]);
+	const handleSelectTracker = async (tracker, loadServices) => {
+		try {
+			await toggleSelection('/api/tracker-services', tracker._id);
 
-	// Load selected trackers from localStorage or select defaults
-	useEffect(() => {
-		const saved = localStorage.getItem('selectedTrackers');
-		if (saved) {
-			try {
-				setSelectedTrackers(JSON.parse(saved));
-			} catch (e) {
-				console.error('Invalid tracker data in localStorage');
-				setSelectedTrackers([]);
-			}
-		} else {
-			// If no selection exists, fetch and select default trackers
-			const selectDefaults = async () => {
-				try {
-					const trackers = await fetchTrackerServices();
-					if (trackers && trackers.length > 0) {
-						const defaultTrackerIds = trackers
-							.filter(tracker => tracker.isDefault)
-							.map(tracker => tracker._id);
+			if (loadServices) await loadServices();
 
-						if (defaultTrackerIds.length > 0) {
-							saveSelectedTrackers(defaultTrackerIds);
-						}
-					}
-				} catch (error) {
-					console.error('Error selecting default trackers:', error);
-				}
-			};
-
-			selectDefaults();
+			return true;
+		} catch (error) {
+			console.error('Error handling tracker selection:', error);
+			return false;
 		}
-	}, []);
+	};
 
-	// Save selected trackers to localStorage - store just IDs like in IceServerManager
-	const saveSelectedTrackers = (trackerIds) => {
-		localStorage.setItem('selectedTrackers', JSON.stringify(trackerIds));
-		setSelectedTrackers(trackerIds);
-
-		// Notify other components about tracker changes
-		window.dispatchEvent(new CustomEvent('trackers-changed', {
-			detail: { trackerIds }
-		}));
+	const isTrackerSelected = (tracker) => {
+		return tracker.selected;
 	};
 
 	const initialFormState = {
@@ -93,29 +58,6 @@ function TrackerServiceManager() {
 		{ name: 'name', label: 'Name', type: 'text', placeholder: 'My Tracker', required: true },
 		{ name: 'url', label: 'URL', type: 'text', placeholder: 'wss://tracker.example.com', required: true }
 	];
-
-	const handleSelectTracker = async (tracker) => {
-		try {
-			const isSelected = selectedTrackers.includes(tracker._id);
-			let newSelection;
-
-			if (isSelected) {
-				newSelection = selectedTrackers.filter(id => id !== tracker._id);
-			} else {
-				newSelection = [...selectedTrackers, tracker._id];
-			}
-
-			saveSelectedTrackers(newSelection);
-			return true; // Signal success to trigger reload
-		} catch (error) {
-			console.error('Error handling tracker selection:', error);
-			return false;
-		}
-	};
-
-	const isTrackerSelected = (tracker) => {
-		return selectedTrackers.includes(tracker._id);
-	};
 
 	return (
 		<div className="mb-8">

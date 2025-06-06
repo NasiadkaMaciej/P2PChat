@@ -71,7 +71,7 @@ export default function GenericServiceManager({
 					console.error(`Failed to delete: ${error.message}`);
 				}
 			}}
-			onSelect={onSelect ? () => onSelect(service) : undefined}
+			onSelect={onSelect ? () => onSelect(service, loadServices) : undefined}
 			connecting={connecting && connectedId === service._id}
 			connected={connected === service._id}
 			selected={isSelected ? isSelected(service) : service.selected}

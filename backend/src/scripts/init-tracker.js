@@ -27,7 +27,8 @@ async function initTrackerServices() {
 			const defaultTracker = {
 				name: DEFAULT_TRACKER_NAME,
 				url: DEFAULT_TRACKER_URL,
-				isDefault: true
+				isDefault: true,
+				selected: true
 			};
 
 			try {
@@ -38,9 +39,8 @@ async function initTrackerServices() {
 			}
 
 			console.log('Added default tracker service successfully!');
-		} else {
+		} else
 			console.log(`Found ${count} existing tracker services. Skipping initialization.`);
-		}
 
 		// Close connection if this script is executed directly
 		if (require.main === module) {

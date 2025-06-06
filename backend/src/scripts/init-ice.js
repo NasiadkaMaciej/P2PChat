@@ -30,6 +30,7 @@ async function initIceServers() {
 						type: 'stun',
 						url: stunUrl.trim(),
 						isDefault: true,
+						selected: true
 					});
 					console.log(`Added default STUN server: ${stunUrl.trim()}`);
 				} catch (error) {
@@ -51,15 +52,15 @@ async function initIceServers() {
 						username,
 						credential,
 						isDefault: true,
+						selected: true // Mark as selected by default
 					});
-					console.log(`Added default TURN server: ${turnServerUrl}`);
+					console.log(`Added default TURN server: ${turnServerUrl} - Selected: true`);
 				} catch (error) {
 					console.error(`Error adding default TURN server ${turnServerUrl}:`, error);
 				}
 			}
-		} else {
+		} else
 			console.log(`Found ${count} existing ICE servers. Skipping initialization.`);
-		}
 
 		console.log('Default ICE servers initialization complete.');
 	} catch (error) {

@@ -7,11 +7,19 @@ const {
 	getResourceById,
 	deleteResource,
 	createResource,
-	updateResource
+	updateResource,
+	getSelectedResources,
+	toggleResourceSelection
 } = require('../utils/crud-helper');
 
 // Get all ICE servers
 router.get('/', getAllResources(IceServer));
+
+// Get selected ICE servers
+router.get('/selected', getSelectedResources(IceServer));
+
+// Toggle selection status
+router.put('/:id/toggle-selection', toggleResourceSelection(IceServer));
 
 // Get ICE server by ID
 router.get('/:id', getResourceById(IceServer));

@@ -31,6 +31,10 @@ const IceServerSchema = new mongoose.Schema({
 		type: Boolean,
 		default: false
 	},
+	selected: {
+		type: Boolean,
+		default: false
+	},
 	createdAt: {
 		type: Date,
 		default: Date.now
