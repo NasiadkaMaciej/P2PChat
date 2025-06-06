@@ -22,7 +22,7 @@ export default function GenericServiceManager({
 	connectedId,
 	isSelected,
 	helpContent,
-	enableSelection = false,
+	enableSelection = true,
 }) {
 	const {
 		services,

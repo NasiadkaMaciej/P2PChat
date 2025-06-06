@@ -21,7 +21,7 @@ const dhtServiceSchema = new mongoose.Schema({
 			message: props => `${props.value} is not a valid URL!`
 		}
 	},
-	selected: {
+	isDefault: {
 		type: Boolean,
 		default: false
 	}

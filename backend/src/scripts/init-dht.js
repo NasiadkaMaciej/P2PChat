@@ -38,9 +38,9 @@ async function initializeDefaultDht() {
 				await DhtService.create({
 					name: name,
 					url: dhtUrl,
-					selected: true
+					isDefault: true,
 				});
-				console.log(`Created DHT service with URL: ${dhtUrl}`);
+				console.log(`Created default DHT service with URL: ${dhtUrl}`);
 			}
 			console.log('Added all default DHT services successfully!');
 		} else

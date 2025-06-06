@@ -8,18 +8,10 @@ const {
 	deleteResource,
 	createResource,
 	updateResource,
-	getSelectedResources,
-	toggleResourceSelection
 } = require('../utils/crud-helper');
 
 // Get all DHT services
 router.get('/', getAllResources(DhtService));
-
-// Get selected DHT services
-router.get('/selected', getSelectedResources(DhtService));
-
-// Toggle selection status
-router.put('/:id/toggle-selection', toggleResourceSelection(DhtService));
 
 // Get DHT service by ID
 router.get('/:id', getResourceById(DhtService));
