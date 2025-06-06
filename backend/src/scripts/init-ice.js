@@ -54,7 +54,7 @@ async function initIceServers() {
 						isDefault: true,
 						selected: true // Mark as selected by default
 					});
-					console.log(`Added default TURN server: ${turnServerUrl} - Selected: true`);
+					console.log(`Added default TURN server: ${turnServerUrl}`);
 				} catch (error) {
 					console.error(`Error adding default TURN server ${turnServerUrl}:`, error);
 				}

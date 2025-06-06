@@ -35,6 +35,12 @@ services:
       - .env
     networks:
       - p2pnet
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${DHT_INTERNAL_PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   stunturn:
     build:
@@ -55,9 +61,15 @@ services:
     container_name: webtorrent-tracker
     restart: unless-stopped
     ports:
-      - "TORRENT_PORT:8000"
+      - "${TORRENT_PORT}:8000"
     networks:
       - p2pnet
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 networks:
   p2pnet:

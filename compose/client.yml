@@ -16,6 +16,12 @@ services:
       - NEXT_PUBLIC_BACKEND_URL=http://localhost:${BACKEND_PORT}
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${FRONTEND_INTERNAL_PORT}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   backend:
     build:
@@ -39,6 +45,12 @@ services:
       - .env
     command: >
       sh -c "npm start & sleep 10 && node src/scripts/init-dht.js && node src/scripts/init-ice.js && node src/scripts/init-tracker.js && wait"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${BACKEND_PORT}/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   database:
     build:
@@ -47,6 +59,12 @@ services:
       - mongo-data:/data/db
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
 volumes:
   mongo-data:
