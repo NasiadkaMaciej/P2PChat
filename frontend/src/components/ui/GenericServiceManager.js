@@ -3,11 +3,11 @@ import { useServiceManagement } from '@/hooks/useServiceManagement';
 import ServiceForm from './ServiceForm';
 import ServiceManager from './ServiceManager';
 import ServiceItem from './ServiceItem';
-import HelpPopup from './HelpPopup';
 
 export default function GenericServiceManager({
 	title,
 	serviceTypeLabel,
+	endpoint,
 	initialFormState,
 	fetchServices,
 	addService,
@@ -15,7 +15,6 @@ export default function GenericServiceManager({
 	deleteService,
 	onConnect,
 	onSelect,
-	showTypeLabel,
 	formFields,
 	additionalContent,
 	connected,
@@ -35,14 +34,17 @@ export default function GenericServiceManager({
 		handleFormSubmit,
 		startEdit,
 		cancelEdit,
-		loadServices
+		loadServices,
+		handleDelete,
+		handleSelect,
 	} = useServiceManagement({
 		fetchServices,
 		addService,
 		editService,
 		deleteService,
 		serviceTypeLabel,
-		initialFormState
+		initialFormState,
+		endpoint
 	});
 
 	const renderForm = () => (
@@ -58,24 +60,21 @@ export default function GenericServiceManager({
 		/>
 	);
 
+	const handleServiceSelect = async (service) => {
+		return handleSelect(service, onSelect);
+	};
+
 	const renderServiceItem = (service) => (
 		<ServiceItem
+			key={service._id}
 			service={service}
 			onConnect={onConnect ? () => onConnect(service) : undefined}
 			onEdit={() => startEdit(service)}
-			onDelete={async () => {
-				try {
-					await deleteService(service._id);
-					loadServices();
-				} catch (error) {
-					console.error(`Failed to delete: ${error.message}`);
-				}
-			}}
-			onSelect={onSelect ? () => onSelect(service, loadServices) : undefined}
+			onDelete={() => handleDelete(service._id)}
+			onSelect={onSelect || endpoint ? () => handleServiceSelect(service) : undefined}
 			connecting={connecting && connectedId === service._id}
 			connected={connected === service._id}
 			selected={isSelected ? isSelected(service) : service.selected}
-			showTypeLabel={showTypeLabel}
 		/>
 	);
 
@@ -93,7 +92,6 @@ export default function GenericServiceManager({
 					setFormData(initialFormState);
 				}}
 				onCancelEdit={cancelEdit}
-				onFormSubmit={handleFormSubmit}
 				renderForm={renderForm}
 				renderServiceItem={renderServiceItem}
 			/>

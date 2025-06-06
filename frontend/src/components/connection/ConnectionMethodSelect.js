@@ -1,4 +1,3 @@
-'use client';
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useConnection } from '@/context/ConnectionContext';
@@ -30,17 +29,43 @@ function ConnectionMethodSelect() {
 				<div className="flex items-center">
 					<h2 className="text-xl font-semibold">Connection Method</h2>
 					<HelpPopup title="Connection Methods">
-						<h4 className="font-medium mb-2">Manual Exchange</h4>
 						<p className="mb-3">
-							The manual exchange method requires you to copy and paste connection data between peers.
-							This is the most private method as no third-party servers are involved in the signaling process.
+							Connection methods determine how peers discover each other and exchange the information
+							needed to establish a direct WebRTC connection.
 						</p>
 
-						<h4 className="font-medium mb-2">DHT Network</h4>
-						<p>
-							The DHT (Distributed Hash Table) method uses a lightweight signaling server to help
-							peers discover each other and exchange connection data automatically. This is more
-							convenient but requires trusting the DHT server.
+						<h4 className="font-medium mb-2">Methods Comparison</h4>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+							<div className="bg-gray-900 p-3 rounded-md">
+								<h5 className="text-blue-400 mb-1">Manual Exchange</h5>
+								<ul className="list-disc pl-5 space-y-1 text-sm">
+									<li><strong>Process</strong>: Copy/paste connection data</li>
+									<li><strong>Convenience</strong>: Requires more steps</li>
+									<li><strong>Privacy</strong>: Highest privacy, no third parties</li>
+									<li><strong>Use Case</strong>: For sensitive communications</li>
+								</ul>
+							</div>
+							<div className="bg-gray-900 p-3 rounded-md">
+								<h5 className="text-purple-400 mb-1">DHT Network</h5>
+								<ul className="list-disc pl-5 space-y-1 text-sm">
+									<li><strong>Process</strong>: Automatic discovery & exchange</li>
+									<li><strong>Convenience</strong>: One-click connection</li>
+									<li><strong>Privacy</strong>: DHT server sees connection metadata</li>
+									<li><strong>Use Case</strong>: For easier, regular connections</li>
+								</ul>
+							</div>
+						</div>
+
+						<h4 className="font-medium mb-2">Privacy Considerations</h4>
+						<p className="text-sm mb-2">
+							Manual Exchange offers complete privacy as no servers are involved in the connection process.
+							DHT Network requires trusting the DHT server with connection metadata (but not message content).
+						</p>
+
+						<h4 className="font-medium mb-2">Self-Hosting</h4>
+						<p className="text-sm">
+							For maximum privacy, you can easily host your own DHT service using our provided setup script.
+							Self-hosting gives you full control over connection metadata while still enjoying automatic peer discovery.
 						</p>
 					</HelpPopup>
 				</div>

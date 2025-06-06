@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { fadeIn } from '@/utils/animation-utils';
 import Button from './Button';
 
-export default function ServiceItem({
+const ServiceItem = memo(function ServiceItem({
 	service,
 	onConnect,
 	onEdit,
@@ -12,7 +12,6 @@ export default function ServiceItem({
 	connecting,
 	connected,
 	selected,
-	showTypeLabel = false,
 }) {
 	// Create a single function to render action buttons
 	const renderActionButtons = () => (
@@ -52,7 +51,7 @@ export default function ServiceItem({
 		<div className="flex items-center gap-2">
 			<h4 className="font-medium text-white">{service.name}</h4>
 
-			{showTypeLabel && service.type && (
+			{service.type && (
 				<span className={`text-xs px-2 py-1 rounded ${service.type === 'stun'
 					? 'bg-blue-900/50 text-blue-200'
 					: 'bg-purple-900/50 text-purple-200'
@@ -97,4 +96,6 @@ export default function ServiceItem({
 			</div>
 		</motion.div>
 	);
-}
+}, () => {});
+
+export default ServiceItem;

@@ -1,5 +1,6 @@
 import { useConnection } from "@/context/ConnectionContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { toggleSelection } from '@/services/api-service';
 
 export function useServiceManagement({
 	fetchServices,
@@ -8,6 +9,7 @@ export function useServiceManagement({
 	deleteService,
 	serviceTypeLabel,
 	initialFormState,
+	endpoint
 }) {
 	const { setError } = useConnection();
 	const [services, setServices] = useState([]);
@@ -27,11 +29,27 @@ export function useServiceManagement({
 			const loadedServices = await fetchServices();
 			setServices(loadedServices);
 		} catch (error) {
-			setError(`Failed to load ${serviceTypeLabel}: ${error.message}`);
+			setError(`Failed to load ${serviceTypeLabel.toLowerCase()}: ${error.message}`);
 		} finally {
 			setLoading(false);
 		}
 	};
+
+	// Optimistically update service in the local state
+	const updateServiceLocally = useCallback((id, updatedData) => {
+		setServices(prevServices =>
+			prevServices.map(service =>
+				service._id === id ? { ...service, ...updatedData } : service
+			)
+		);
+	}, []);
+
+	// Optimistically remove service from the local state
+	const removeServiceLocally = useCallback((id) => {
+		setServices(prevServices =>
+			prevServices.filter(service => service._id !== id)
+		);
+	}, []);
 
 	const handleFormSubmit = async (e) => {
 		e.preventDefault();
@@ -63,16 +81,25 @@ export function useServiceManagement({
 
 		try {
 			setLoading(true);
-			await (editing ? editService(editing, formData) : addService(formData));
+			if (editing) {
+				// Update optimistically
+				updateServiceLocally(editing, formData);
+				await editService(editing, formData);
+			} else {
+				const newService = await addService(formData);
+				// Add the new service to the list without a full reload
+				setServices(prev => [...prev, newService]);
+			}
+
 			setFormData({ ...initialFormState });
 			setEditing(null);
 			setShowForm(false);
-			loadServices();
 		} catch (error) {
 			setError(
-				`Failed to ${editing ? "update" : "add"} ${serviceTypeLabel}: ${error.message
-				}`
+				`Failed to ${editing ? "update" : "add"} ${serviceTypeLabel.toLowerCase()}: ${error.message}`
 			);
+			// Revert optimistic update on error
+			loadServices();
 		} finally {
 			setLoading(false);
 		}
@@ -90,6 +117,41 @@ export function useServiceManagement({
 		setShowForm(false);
 	};
 
+	const handleDelete = async (id) => {
+		try {
+			setLoading(true);
+			removeServiceLocally(id);
+			await deleteService(id);
+		} catch (error) {
+			// If delete fails, reload the services
+			setError(`Failed to delete ${serviceTypeLabel.toLowerCase()}: ${error.message}`);
+			loadServices();
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const handleSelect = async (service, callback = null) => {
+		try {
+			// Optimistically update the UI
+			updateServiceLocally(service._id, { selected: !service.selected });
+
+			await toggleSelection(endpoint, service._id);
+
+			// Callback after successful selection
+			if (callback && typeof callback === 'function') {
+				await callback(service);
+			}
+
+			return true;
+		} catch (error) {
+			// If toggle fails, reload the services
+			setError(`Failed to update selection: ${error.message}`);
+			loadServices();
+			return false;
+		}
+	};
+
 	return {
 		services,
 		formData,
@@ -102,5 +164,8 @@ export function useServiceManagement({
 		startEdit,
 		cancelEdit,
 		loadServices,
+		handleDelete,
+		handleSelect,
+		updateServiceLocally
 	};
 }
