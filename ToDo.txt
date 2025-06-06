@@ -3,7 +3,7 @@ Replace console.log with NODE_ENV aware logging function
 Use nginx to make app available by p2pchat hostname in browser?
 connection-state -> ConnectionContext?
 ConnectViaDht and ConnectToPeerViaDht?
-Health check
 When connecting via DHT, make loading animation untill connected
 Group chats?
 Divide message-service to multiple files
+Remove kompose-related config from k8s?

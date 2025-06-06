@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml -o k8s/
+    kompose.version: 1.36.0 (HEAD)
+  labels:
+    io.kompose.service: dht
+  name: dht
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: dht
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml -o k8s/
+        kompose.version: 1.36.0 (HEAD)
+      labels:
+        io.kompose.service: dht
+    spec:
+      containers:
+        - env:
+            - name: HOST
+              value: 0.0.0.0
+            - name: PORT
+              value: "3479"
+          envFrom:
+            - configMapRef:
+                name: env
+          image: dht
+          imagePullPolicy: Never
+          livenessProbe:
+            exec:
+              command:
+                - wget
+                - --no-verbose
+                - --tries=1
+                - --spider
+                - http://localhost:3479/health
+            failureThreshold: 3
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 10
+          name: dht
+      restartPolicy: Always
