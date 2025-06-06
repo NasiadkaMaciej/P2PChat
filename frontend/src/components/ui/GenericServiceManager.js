@@ -22,6 +22,7 @@ export default function GenericServiceManager({
 	connectedId,
 	isSelected,
 	helpContent,
+	enableSelection = false,
 }) {
 	const {
 		services,
@@ -71,7 +72,7 @@ export default function GenericServiceManager({
 			onConnect={onConnect ? () => onConnect(service) : undefined}
 			onEdit={() => startEdit(service)}
 			onDelete={() => handleDelete(service._id)}
-			onSelect={onSelect || endpoint ? () => handleServiceSelect(service) : undefined}
+			onSelect={enableSelection && (onSelect || endpoint) ? () => handleServiceSelect(service) : undefined}
 			connecting={connecting && connectedId === service._id}
 			connected={connected === service._id}
 			selected={isSelected ? isSelected(service) : service.selected}

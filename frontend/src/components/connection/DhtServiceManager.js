@@ -43,10 +43,10 @@ function DhtServiceManager() {
 			connected={connected}
 			connecting={connecting}
 			connectedId={connected}
+			enableSelection={false}
 			additionalContent={connectedService && connected && (
 				<PeerList
 					dhtService={connectedService}
-					onDisconnect={() => setConnected(null)}
 				/>
 			)}
 		/>
